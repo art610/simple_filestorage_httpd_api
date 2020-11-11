@@ -7,19 +7,39 @@ assignees: ''
 
 ---
 
-**Software version** where you get this bug
+### Versions
+
+You can get this information from executing in Linux terminal:
+```bash
+cat /etc/os-release && echo -n "arch: " && arch && \
+python -V && pip -V && python3 -V && pip3 -V && \
+echo -n "nodejs: " && nodejs -v && echo -n "npm: " && npm -v
+```
+
+**Current version** of program, script, module where you get this bug with dependencies.
+
+### Description
+
+[Description of the bug or feature]
 
 **Describe the bug**
 A clear and concise description of what the bug is.
 
-**To Reproduce**
+
+
+### Steps to Reproduce
+
 Steps to reproduce the behavior:
+
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
 
+**Actual behavior:** [What actually happened]
+
 **Expected behavior**
+[What you expected to happen] 
 A clear and concise description of what you expected to happen.
 
 **Screenshots**
@@ -56,3 +76,13 @@ Add any other context about the problem here.
 * Where on the platform does it happen?
 * How do we replicate the issue?
 
+### Prerequisites
+
+* [ ] Can you reproduce the problem in safe mode?
+* [ ] Are you running the latest version?
+* [ ] Did you check the debugging guide?
+* [ ] Did you check the FAQs?
+* [ ] Are you reporting to the correct repository?
+* [ ] Did you perform a cursory search?
+
+For more information, see the `CONTRIBUTING` guide.
