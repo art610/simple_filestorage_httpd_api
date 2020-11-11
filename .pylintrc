@@ -1,2 +1,3 @@
 [MASTER]
 disable=
+    F0001, # No module named test_main.py (fatal)
