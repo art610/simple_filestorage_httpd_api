@@ -1,0 +1,4 @@
+[MASTER]
+disable=
+    C0114, # missing-module-docstring
+    F0001, # No module named __init__.py (fatal)
