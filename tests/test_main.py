@@ -1,3 +1,8 @@
+"""
+Test module docstring title
+
+Short description. Can help with autogenerate docs.
+"""
 from main import sample_sum_func
 
 
