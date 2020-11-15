@@ -2,6 +2,8 @@
 
 ![Analysing the code and run tests](https://github.com/artif467/simple_filestorage_httpapi/workflows/Analysing%20the%20code%20and%20run%20tests/badge.svg?branch=master)
 
+Больше информации представлено в разделе [WIKI](https://github.com/artif467/simple_filestorage_httpapi/wiki)
+
 Реализация демона (daemon), который предоставляет HTTP API для загрузки (upload), скачивания (download) и удаления (delete) файлов.
 
 **Upload: Загрузка файла на сервер**
