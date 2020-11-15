@@ -1,0 +1,26 @@
+## This workflow will build and deploy new release image on Docker Hub
+
+name: Build and publish
+
+on:
+  release:
+    types: published
+
+jobs:
+  build_and_pub:
+    runs-on: ubuntu-18.04
+    env:
+      LOGIN: ${{ secrets.DOCKER_LOGIN }}
+      NAME: ${{ secrets.DOCKER_NAME }}
+    steps:
+      - name: Login on Docker Hub
+        run: echo ${{ secrets.DOCKER_PWD }} | docker login -u ${{ secrets.DOCKER_LOGIN }} --password-stdin
+      - uses: actions/checkout@master
+      - name: Build image with tag version
+        run: docker build -t $LOGIN/$NAME:${GITHUB_REF:11} -f Dockerfile .
+      - name: Push image to Docker Hub with tag version
+        run: docker push $LOGIN/$NAME:${GITHUB_REF:11}
+      - name: Build image with tag latest
+        run: docker build -t $LOGIN/$NAME:latest -f Dockerfile .
+      - name: Update latest image on Docker Hub
+        run: docker push $LOGIN/$NAME:latest

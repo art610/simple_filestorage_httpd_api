@@ -1,0 +1,19 @@
+version: '3.3'
+
+services:
+  app:
+    image: index.docker.io/<docker_hub_org>/<docker_hub_repo>:latest
+    restart: always
+    environment:
+      - TZ=Europe/Moscow
+    volumes:
+      - ./uploads:/app/data
+      - ./log:/app/log
+    ports:
+      - "9000:9000"
+  watchtower:
+    image: v2tec/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json
+    command: --interval 30
