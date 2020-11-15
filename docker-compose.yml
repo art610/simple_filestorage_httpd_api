@@ -10,7 +10,7 @@ services:
       - ./uploads:/app/data
       - ./log:/app/log
     ports:
-      - "9090:9090"
+      - "9000:9000"
   watchtower:
     image: v2tec/watchtower
     volumes:

@@ -10,6 +10,6 @@ COPY . /app
 # Обновляем и устанавливаем необходимые зависимости
 RUN apk update && python -m pip install -r ./requirements.txt --no-cache-dir
 # Указываем порт для слушания
-EXPOSE 9090
+EXPOSE 9000
 # Запускаем приложение при старте контейнера
 CMD python main.py
