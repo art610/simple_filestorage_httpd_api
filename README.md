@@ -1,5 +1,7 @@
 # Simple Filestorage HTTP API - хранилище файлов с доступом по HTTP на Python
 
+![Analysing the code and run tests](https://github.com/artif467/simple_filestorage_httpapi/workflows/Analysing%20the%20code%20and%20run%20tests/badge.svg?branch=master)
+
 Реализация демона (daemon), который предоставляет HTTP API для загрузки (upload), скачивания (download) и удаления (delete) файлов.
 
 **Upload: Загрузка файла на сервер**
