@@ -16,7 +16,8 @@ HTTP_VERSIONS: Tuple[str, ...] = ('HTTP/1.1',)
 @logger.catch
 def run_server(hostname_ipv4, host_port, waiting_clients, max_buffer_size):
     server_socket = get_server_socket(hostname_ipv4, host_port, waiting_clients)
-    accept_connections(server_socket, max_buffer_size)
+    accept_connections(server_socket, METHODS, HTTP_VERSIONS, max_buffer_size)
+    return server_socket
 
 
 @logger.catch
@@ -66,20 +67,22 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
             resp_status_code = check_request_by_first_line(first_req_line_list, methods,
                                                            http_versions)
             if resp_status_code == 200:  # 200 OK
-                logger.debug('200 OK')
 
                 method = first_req_line_list[0]
 
                 if method == 'GET':
                     # TODO: Implement the required functionality - file downloading, issue #5
+                    logger.debug('GET method')
                     client_socket.send("HTTP/1.1 200 OK\n\nGET method".encode())
 
                 elif method == 'POST':
                     # TODO: Implement the required functionality - file uploading, issue #4
+                    logger.debug('POST method')
                     client_socket.send("HTTP/1.1 200 OK\n\nPOST method".encode())
 
                 else:  # method == DELETE
                     # TODO: Implement the required functionality - file deletion, issue #6
+                    logger.debug('DELETE method')
                     client_socket.send("HTTP/1.1 200 OK\n\n DELETE method".encode())
 
                 client_socket.close()
@@ -97,6 +100,9 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                     logger.debug('400 Bad Request\n{}', client_request)
                     client_socket.send("HTTP/1.1 400 Bad Request\n\n".encode())
                     client_socket.close()
+
+
+
 
 
 @logger.catch
