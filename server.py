@@ -3,7 +3,7 @@
 """
 import socket
 import sys
-
+from typing import Union, Tuple, List, Dict
 from loguru import logger
 
 logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG", rotation="10KB")
@@ -38,7 +38,7 @@ def get_server_socket(host_addr: str = 'localhost', port: int = 9000,
 
 
 @logger.catch
-def accept_connections(server_socket: socket.socket, buffer_size: int =4096):
+def accept_connections(server_socket: socket.socket, buffer_size: int = 4096):
     """
     Принимаем запросы от клиентов в бесконечном цикле
     """
@@ -53,12 +53,41 @@ def accept_connections(server_socket: socket.socket, buffer_size: int =4096):
             logger.debug("New connection from: {}", client_addr)
 
             client_request = client_socket.recv(buffer_size)
+            first_req_line_list, req_headers_dict, req_body = get_request_elements(client_request)
 
-            logger.debug(client_request)
+            logger.debug("<cyan>Request first line:</>{}", first_req_line_list)
+            logger.debug("<cyan>Request headers:</>\n{}", req_headers_dict)
+            logger.debug("<cyan>Request body:</>\n{}", req_body)
+
             client_socket.send("HTTP/1.1 200 OK\n\n".encode())
+
             client_socket.close()
 
         logger.debug('All is good')
+
+
+def get_request_elements(request: bytes) -> Union[Tuple[List[str], Dict, bytes]]:
+    """
+    Функция позволяет распарсить запрос клиента (аргумент request) и получить:
+    req_start_line_list - основную строку запроса в виде кортежа из метода, URI и версии HTTP
+    req_headers_dict - словарь с заголовками запроса
+    req_body_part - тело запроса в виде байтовой строки
+    """
+
+    headers_end = request.find(b'\r\n\r\n')
+    headers = request[:headers_end].decode().split('\r\n')
+    req_start_line_list: List[str] = headers[0].split(' ')
+    del headers[0]
+
+    req_headers_dict: Dict = {}
+    for i in headers:
+        key = i.split(': ')[0]
+        val = i.split(': ')[1]
+        req_headers_dict[key] = val
+
+    req_body_part: bytes = request[headers_end + len('\r\n\r\n'):]
+
+    return req_start_line_list, req_headers_dict, req_body_part
 
 
 if __name__ == '__main__':

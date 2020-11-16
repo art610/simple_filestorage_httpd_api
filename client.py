@@ -18,7 +18,7 @@ def send_test_request(host_addr: str = 'localhost', port: int = 9000,
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_sock.connect((host_addr, port))
 
-    server_sock.send("Hello".encode())
+    server_sock.send("Hello world".encode())
     server_response = server_sock.recv(chunk_size)
 
     server_sock.close()
