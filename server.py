@@ -1,11 +1,22 @@
 """
 Модуль http-сервера с основной реализацией API
 """
-
 import socket
+import sys
+from loguru import logger
+
+logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG", rotation="10KB")
+logger = logger.opt(colors=True)
 
 
-def get_server_socket(host_addr, port, clients_queue_size):
+@logger.catch
+def run_server(server_addr, server_port, client_queue, buffer):
+    server_socket = get_server_socket(server_addr, server_port, client_queue)
+    accept_connections(server_socket, buffer)
+
+
+@logger.catch
+def get_server_socket(host_addr='localhost', port=9000, clients_queue_size=5):
     """
     Создаем объект socket c IPv4 и TCP с указанными в аргументах адресом и портом сервера
     Принимаем указанное в clients_queue_size количество подключений от клиентов
@@ -24,21 +35,45 @@ def get_server_socket(host_addr, port, clients_queue_size):
     return server_socket
 
 
-def accept_connections(server_socket, buffer_size):
+@logger.catch
+def accept_connections(server_socket, buffer_size=4096):
+    """
+    Принимаем запросы от клиентов в бесконечном цикле
+    """
     while True:
         try:
             client_socket, client_addr = server_socket.accept()
         except KeyboardInterrupt as e:
             server_socket.close()
-            print("Connection was close:", e)
+            logger.debug("Connection was close by peer")
             break
         else:
-            print("New connection from:", client_addr)
+            logger.debug("New connection from: {}", client_addr)
 
             client_request = client_socket.recv(buffer_size)
 
-            print(client_request)
-
+            logger.debug(client_request)
+            client_socket.send("HTTP/1.1 200 OK\n\n".encode())
             client_socket.close()
 
-        print('All is good')
+        logger.debug('All is good')
+
+
+if __name__ == '__main__':
+    server_addr = 'localhost'
+    server_port = 9000
+    buffer = 4096
+    client_queue = 5
+    try:
+        server_addr = sys.argv[1]
+        server_port = int(sys.argv[2])
+        buffer = int(sys.argv[3])
+        client_queue = int(sys.argv[4])
+    except IndexError:
+        logger.info('<red>Host: {}</>', server_addr)
+        logger.info('<red>Port: {}</>', server_port)
+        logger.info('Buffer: {}', buffer)
+        logger.info('Listen: {}', client_queue)
+
+    server_sock = get_server_socket(server_addr, server_port, client_queue)
+    accept_connections(server_sock, buffer)
