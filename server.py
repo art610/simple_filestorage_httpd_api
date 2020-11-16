@@ -9,6 +9,9 @@ from loguru import logger
 logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG", rotation="10KB")
 logger = logger.opt(colors=True)
 
+METHODS: Tuple[str, ...] = ('GET', 'POST', 'DELETE')
+HTTP_VERSIONS: Tuple[str, ...] = ('HTTP/1.1',)
+
 
 @logger.catch
 def run_server(server_addr, server_port, client_queue, buffer):
@@ -38,7 +41,8 @@ def get_server_socket(host_addr: str = 'localhost', port: int = 9000,
 
 
 @logger.catch
-def accept_connections(server_socket: socket.socket, buffer_size: int = 4096):
+def accept_connections(server_socket: socket.socket, methods, http_versions,
+                       buffer_size: int = 4096):
     """
     Принимаем запросы от клиентов в бесконечном цикле
     """
@@ -59,11 +63,40 @@ def accept_connections(server_socket: socket.socket, buffer_size: int = 4096):
             logger.debug("<cyan>Request headers:</>\n{}", req_headers_dict)
             logger.debug("<cyan>Request body:</>\n{}", req_body)
 
-            client_socket.send("HTTP/1.1 200 OK\n\n".encode())
+            resp_status_code = check_request_by_first_line(first_req_line_list, methods,
+                                                           http_versions)
+
+            client_socket.send(str(resp_status_code).encode())
 
             client_socket.close()
 
         logger.debug('All is good')
+
+
+def check_request_by_first_line(request_first_line: List, methods: Tuple,
+                                http_versions: Tuple) -> int:
+    """
+    Проверяем запрос на корректность, содержание одного из
+    возможных методов, и версию протокола HTTP.
+    Принимаем в качестве аргументов:
+    request_first_line - первую строку запроса в формате списка из содержимых элементов
+    methods - кортеж допустимых для запроса методов
+    http_versions - кортеж допустимых версий протокола HTTP
+    Возвращаем статус код в виде целого числа int
+    """
+    try:
+        method = request_first_line[0]
+        # uri = request_first_line[1]
+        http_version = request_first_line[2]
+    except IndexError:
+        return 400  # 400 Bad Request
+    else:
+        if method not in methods:
+            return 405  # 405 Method Not Allowed
+        if http_version not in http_versions:
+            return 505  # HTTP Version Not Supported
+
+        return 200  # OK
 
 
 def get_request_elements(request: bytes) -> Union[Tuple[List[str], Dict, bytes]]:
@@ -76,7 +109,7 @@ def get_request_elements(request: bytes) -> Union[Tuple[List[str], Dict, bytes]]
 
     headers_end = request.find(b'\r\n\r\n')
     headers = request[:headers_end].decode().split('\r\n')
-    req_start_line_list: List[str] = headers[0].split(' ')
+    req_start_line_list: List[str, ...] = headers[0].split(' ')
     del headers[0]
 
     req_headers_dict: Dict = {}
@@ -107,4 +140,4 @@ if __name__ == '__main__':
         logger.info('Listen: {}', client_queue)
 
     server_sock = get_server_socket(server_addr, server_port, client_queue)
-    accept_connections(server_sock, buffer)
+    accept_connections(server_sock, METHODS, HTTP_VERSIONS, buffer)
