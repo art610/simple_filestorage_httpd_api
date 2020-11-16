@@ -5,10 +5,9 @@ Short description. Can help with autogenerate docs.
 """
 import threading
 import socket
-import sys
+import time
 import requests
 import pytest
-from pathlib import Path
 from server import run_server
 
 SERVER_ADDR: str = 'localhost'
@@ -36,6 +35,7 @@ def test_response_for_incorrect_request_method():
     """
     Simple test for incorrect request method to HTTP-server
     """
+    time.sleep(3)
     with requests.Session() as s:
         request = requests.put(SERVER_URL)
         s.close()
@@ -62,7 +62,6 @@ def test_response_for_get_request():
     """
     Simple test for GET request to HTTP-server
     """
-
     with requests.Session() as s:
         request = requests.get(SERVER_URL)
         s.close()
@@ -74,7 +73,6 @@ def test_response_for_post_request():
     """
     Simple test for POST request to HTTP-server
     """
-
     with requests.Session() as s:
         request = requests.post(SERVER_URL)
         s.close()
@@ -86,7 +84,6 @@ def test_response_for_delete_request():
     """
     Simple test for DELETE request to HTTP-server
     """
-
     with requests.Session() as s:
         request = requests.delete(SERVER_URL)
         s.close()
@@ -96,6 +93,4 @@ def test_response_for_delete_request():
 
 # Input point if we directly run this script
 if __name__ == "__main__":
-    # test_response_for_get_request()
-    python_executable_full_path = sys.executable
-    server_script = str((Path().parent.absolute()).parent) + '/server.py'
+    pass
