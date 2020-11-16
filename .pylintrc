@@ -1,3 +1,5 @@
 [MASTER]
+fail-under=7
 disable=
     F0001, # No module named test_main.py (fatal)
+    W0511,

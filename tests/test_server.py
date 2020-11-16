@@ -22,8 +22,11 @@ MAX_SERVER_BUFFER_SIZE: int = 4096
 @pytest.fixture(autouse=True)
 def start_server():
     thread = threading.Thread(target=run_server,
-                              args=(SERVER_ADDR, SERVER_PORT, LISTEN_CLIENTS_NUMB,
-                                    MAX_SERVER_BUFFER_SIZE))
+                              args=(
+                                  SERVER_ADDR, SERVER_PORT,
+                                  LISTEN_CLIENTS_NUMB,
+                                  MAX_SERVER_BUFFER_SIZE
+                              ))
     thread.daemon = True
     thread.start()
     yield

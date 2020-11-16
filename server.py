@@ -6,7 +6,8 @@ import sys
 from typing import Union, Tuple, List, Dict
 from loguru import logger
 
-logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG", rotation="10KB")
+logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG",
+           rotation="10KB")
 logger = logger.opt(colors=True)
 
 METHODS: Tuple[str, ...] = ('GET', 'POST', 'DELETE')
@@ -15,7 +16,11 @@ HTTP_VERSIONS: Tuple[str, ...] = ('HTTP/1.1',)
 
 @logger.catch
 def run_server(hostname_ipv4, host_port, waiting_clients, max_buffer_size):
-    server_socket = get_server_socket(hostname_ipv4, host_port, waiting_clients)
+    """
+    Функция для запуска сервера, которая возвращает серверный сокет
+    """
+    server_socket = get_server_socket(hostname_ipv4, host_port,
+                                      waiting_clients)
     accept_connections(server_socket, METHODS, HTTP_VERSIONS, max_buffer_size)
     return server_socket
 
@@ -24,7 +29,8 @@ def run_server(hostname_ipv4, host_port, waiting_clients, max_buffer_size):
 def get_server_socket(host_addr: str = 'localhost', port: int = 9000,
                       clients_queue_size: int = 5) -> socket.socket:
     """
-    Создаем объект socket c IPv4 и TCP с указанными в аргументах адресом и портом сервера
+    Создаем объект socket c IPv4 и TCP с указанными в аргументах адресом и
+    портом сервера.
     Принимаем указанное в clients_queue_size количество подключений от клиентов
     Пока что будем их обрабатывать по очереди синхронно - одно за другим
     Аргументы:
@@ -50,51 +56,61 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
     while True:
         try:
             client_socket, client_addr = server_socket.accept()
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt as interruption_error:
             server_socket.close()
-            logger.debug("Connection was close by peer: {}", e)
+            logger.debug("Connection was close by peer: {}",
+                         interruption_error)
             break
         else:
             logger.debug("New connection from: {}", client_addr)
 
             client_request = client_socket.recv(buffer_size)
-            first_req_line_list, req_headers_dict, req_body = get_request_elements(client_request)
+            first_req_line, req_headers_dict, req_body = get_request_elements(
+                client_request)
 
-            logger.debug("<cyan>Request first line:</>{}", first_req_line_list)
+            logger.debug("<cyan>Request first line:</>{}", first_req_line)
             logger.debug("<cyan>Request headers:</>\n{}", req_headers_dict)
             logger.debug("<cyan>Request body:</>\n{}", req_body)
 
-            resp_status_code = check_request_by_first_line(first_req_line_list, methods,
+            resp_status_code = check_request_by_first_line(first_req_line,
+                                                           methods,
                                                            http_versions)
             if resp_status_code == 200:  # 200 OK
 
-                method = first_req_line_list[0]
+                method = first_req_line[0]
 
                 if method == 'GET':
-                    # TODO: Implement the required functionality - file downloading, issue #5
+                    # TODO: Implement - file downloading, issue #5
                     logger.debug('GET method')
-                    client_socket.send("HTTP/1.1 200 OK\n\nGET method".encode())
+                    client_socket.send(
+                        "HTTP/1.1 200 OK\n\nGET method".encode())
 
                 elif method == 'POST':
-                    # TODO: Implement the required functionality - file uploading, issue #4
+                    # TODO: Implement - file uploading, issue #4
                     logger.debug('POST method')
-                    client_socket.send("HTTP/1.1 200 OK\n\nPOST method".encode())
+                    client_socket.send(
+                        "HTTP/1.1 200 OK\n\nPOST method".encode())
 
                 else:  # method == DELETE
-                    # TODO: Implement the required functionality - file deletion, issue #6
+                    # TODO: Implement - file deletion, issue #6
                     logger.debug('DELETE method')
-                    client_socket.send("HTTP/1.1 200 OK\n\n DELETE method".encode())
+                    client_socket.send(
+                        "HTTP/1.1 200 OK\n\n DELETE method".encode())
 
                 client_socket.close()
 
             else:
                 if resp_status_code == 405:
-                    logger.debug('405 Method Not Allowed: {}', first_req_line_list[0])
-                    client_socket.send("HTTP/1.1 405 Method Not Allowed\n\n".encode())
+                    logger.debug('405 Method Not Allowed: {}',
+                                 first_req_line[0])
+                    client_socket.send(
+                        "HTTP/1.1 405 Method Not Allowed\n\n".encode())
                     client_socket.close()
                 elif resp_status_code == 505:
-                    logger.debug('505 HTTP Version Not Supported: {}', first_req_line_list[2])
-                    client_socket.send("HTTP/1.1 505 HTTP Version Not Supported\n\n".encode())
+                    logger.debug('505 HTTP Version Not Supported: {}',
+                                 first_req_line[2])
+                    client_socket.send(
+                        "HTTP/1.1 505 HTTP Version Not Supported\n\n".encode())
                     client_socket.close()
                 else:  # resp_status_code == 400
                     logger.debug('400 Bad Request\n{}', client_request)
@@ -109,8 +125,8 @@ def check_request_by_first_line(request_first_line: List, methods: Tuple,
     Проверяем запрос на корректность, содержание одного из
     возможных методов, и версию протокола HTTP.
     Принимаем в качестве аргументов:
-    request_first_line - первую строку запроса в формате списка из содержимых элементов
-    methods - кортеж допустимых для запроса методов
+    request_first_line - первую строку запроса в формате списка из содержимых
+    элементов methods - кортеж допустимых для запроса методов
     http_versions - кортеж допустимых версий протокола HTTP
     Возвращаем статус код в виде целого числа int
     """
@@ -130,12 +146,13 @@ def check_request_by_first_line(request_first_line: List, methods: Tuple,
 
 
 @logger.catch
-def get_request_elements(request: bytes) -> Union[Tuple[List[str], Dict, bytes]]:
+def get_request_elements(request: bytes) -> Union[Tuple[List, Dict, bytes]]:
     """
     Функция позволяет распарсить запрос клиента (аргумент request) и получить:
-    req_start_line_list - основную строку запроса в виде кортежа из метода, URI и версии HTTP
-    req_headers_dict - словарь с заголовками запроса
-    req_body_part - тело запроса в виде байтовой строки
+    req_start_line_list - основную строку запроса в виде кортежа из метода, URI
+    и версии HTTP;
+    req_headers_dict - словарь с заголовками запроса;
+    req_body_part - тело запроса в виде байтовой строки.
     """
 
     headers_end = request.find(b'\r\n\r\n')

@@ -3,9 +3,11 @@
 """
 import server
 
+SERVER_ADDR: str = 'localhost'
+SERVER_PORT: int = 9000
 
-HOST = 'localhost'
-PORT = 9000
+LISTEN_CLIENTS_NUMB: int = 12
+MAX_SERVER_BUFFER_SIZE: int = 4096
 
 
 def sample_sum_func(first_number, second_number) -> int:
@@ -19,4 +21,5 @@ def sample_sum_func(first_number, second_number) -> int:
 
 # Input point if we directly run this script
 if __name__ == '__main__':
-    server.run_server()
+    server.run_server(SERVER_ADDR, SERVER_PORT, LISTEN_CLIENTS_NUMB,
+                      MAX_SERVER_BUFFER_SIZE)
