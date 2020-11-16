@@ -1,5 +1,7 @@
 # Simple Filestorage HTTP API - хранилище файлов с доступом по HTTP на Python
 
+![Build and publish](https://github.com/artif467/simple_filestorage_httpd_api/workflows/Build%20and%20publish/badge.svg?branch=master)
+
 ![Analysing the code and run tests](https://github.com/artif467/simple_filestorage_httpapi/workflows/Analysing%20the%20code%20and%20run%20tests/badge.svg?branch=master)
 
 Больше информации представлено в разделе [WIKI](https://github.com/artif467/simple_filestorage_httpapi/wiki)
