@@ -1,13 +1,11 @@
 """
-Some title of module docstring
-
-Short description. Can help with autogenerate docs.
+Данный модуль будет основной точкой входа
 """
-# This is a sample Python script with typing
+import server
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes,
-# files, tool windows, actions, and settings.
+
+HOST = 'localhost'
+PORT = 9000
 
 
 def sample_sum_func(first_number, second_number) -> int:
@@ -21,4 +19,4 @@ def sample_sum_func(first_number, second_number) -> int:
 
 # Input point if we directly run this script
 if __name__ == '__main__':
-    print(type(sample_sum_func(2, 2)))
+    server.run_server()
