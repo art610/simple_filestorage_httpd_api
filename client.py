@@ -10,7 +10,8 @@ logger = logger.opt(colors=True)
 
 
 @logger.catch
-def send_test_request(host_addr='localhost', port=9000, chunk_size=1024):
+def send_test_request(host_addr: str = 'localhost', port: int = 9000,
+                      chunk_size: int = 1024) -> str:
     """
     Функция позволяет "поздороваться" с сервером и получить от него ответ
     """
@@ -26,18 +27,16 @@ def send_test_request(host_addr='localhost', port=9000, chunk_size=1024):
 
 
 if __name__ == '__main__':
-    server_addr = 'localhost'
-    server_port = 9000
-    chunk = 1024
+    server_addr: str = 'localhost'
+    server_port: int = 9000
+    chunk: int = 1024
     try:
         server_addr = sys.argv[1]
         server_port = int(sys.argv[2])
         chunk = int(sys.argv[3])
     except IndexError:
-        logger.info('=======================================')
         logger.info('<red>Server addr: {}</>', server_addr)
         logger.info('<red>Server port: {}</>', server_port)
         logger.info('Chunk: {}', chunk)
-        logger.info('=======================================')
 
     logger.info('Server response: {}', send_test_request(server_addr, server_port, chunk))

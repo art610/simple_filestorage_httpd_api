@@ -3,6 +3,7 @@
 """
 import socket
 import sys
+
 from loguru import logger
 
 logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG", rotation="10KB")
@@ -16,7 +17,8 @@ def run_server(server_addr, server_port, client_queue, buffer):
 
 
 @logger.catch
-def get_server_socket(host_addr='localhost', port=9000, clients_queue_size=5):
+def get_server_socket(host_addr: str = 'localhost', port: int = 9000,
+                      clients_queue_size: int = 5) -> socket.socket:
     """
     Создаем объект socket c IPv4 и TCP с указанными в аргументах адресом и портом сервера
     Принимаем указанное в clients_queue_size количество подключений от клиентов
@@ -36,7 +38,7 @@ def get_server_socket(host_addr='localhost', port=9000, clients_queue_size=5):
 
 
 @logger.catch
-def accept_connections(server_socket, buffer_size=4096):
+def accept_connections(server_socket: socket.socket, buffer_size: int =4096):
     """
     Принимаем запросы от клиентов в бесконечном цикле
     """
@@ -60,10 +62,10 @@ def accept_connections(server_socket, buffer_size=4096):
 
 
 if __name__ == '__main__':
-    server_addr = 'localhost'
-    server_port = 9000
-    buffer = 4096
-    client_queue = 5
+    server_addr: str = 'localhost'
+    server_port: int = 9000
+    buffer: int = 4096
+    client_queue: int = 5
     try:
         server_addr = sys.argv[1]
         server_port = int(sys.argv[2])
