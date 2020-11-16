@@ -14,9 +14,9 @@ HTTP_VERSIONS: Tuple[str, ...] = ('HTTP/1.1',)
 
 
 @logger.catch
-def run_server(server_addr, server_port, client_queue, buffer):
-    server_socket = get_server_socket(server_addr, server_port, client_queue)
-    accept_connections(server_socket, buffer)
+def run_server(hostname_ipv4, host_port, waiting_clients, max_buffer_size):
+    server_socket = get_server_socket(hostname_ipv4, host_port, waiting_clients)
+    accept_connections(server_socket, max_buffer_size)
 
 
 @logger.catch
@@ -51,7 +51,7 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
             client_socket, client_addr = server_socket.accept()
         except KeyboardInterrupt as e:
             server_socket.close()
-            logger.debug("Connection was close by peer")
+            logger.debug("Connection was close by peer: {}", e)
             break
         else:
             logger.debug("New connection from: {}", client_addr)
@@ -65,14 +65,41 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
 
             resp_status_code = check_request_by_first_line(first_req_line_list, methods,
                                                            http_versions)
+            if resp_status_code == 200:  # 200 OK
+                logger.debug('200 OK')
 
-            client_socket.send(str(resp_status_code).encode())
+                method = first_req_line_list[0]
 
-            client_socket.close()
+                if method == 'GET':
+                    # TODO: Implement the required functionality - file downloading, issue #5
+                    client_socket.send("HTTP/1.1 200 OK\n\nGET method".encode())
 
-        logger.debug('All is good')
+                elif method == 'POST':
+                    # TODO: Implement the required functionality - file uploading, issue #4
+                    client_socket.send("HTTP/1.1 200 OK\n\nPOST method".encode())
+
+                else:  # method == DELETE
+                    # TODO: Implement the required functionality - file deletion, issue #6
+                    client_socket.send("HTTP/1.1 200 OK\n\n DELETE method".encode())
+
+                client_socket.close()
+
+            else:
+                if resp_status_code == 405:
+                    logger.debug('405 Method Not Allowed: {}', first_req_line_list[0])
+                    client_socket.send("HTTP/1.1 405 Method Not Allowed\n\n".encode())
+                    client_socket.close()
+                elif resp_status_code == 505:
+                    logger.debug('505 HTTP Version Not Supported: {}', first_req_line_list[2])
+                    client_socket.send("HTTP/1.1 505 HTTP Version Not Supported\n\n".encode())
+                    client_socket.close()
+                else:  # resp_status_code == 400
+                    logger.debug('400 Bad Request\n{}', client_request)
+                    client_socket.send("HTTP/1.1 400 Bad Request\n\n".encode())
+                    client_socket.close()
 
 
+@logger.catch
 def check_request_by_first_line(request_first_line: List, methods: Tuple,
                                 http_versions: Tuple) -> int:
     """
@@ -99,6 +126,7 @@ def check_request_by_first_line(request_first_line: List, methods: Tuple,
         return 200  # OK
 
 
+@logger.catch
 def get_request_elements(request: bytes) -> Union[Tuple[List[str], Dict, bytes]]:
     """
     Функция позволяет распарсить запрос клиента (аргумент request) и получить:
