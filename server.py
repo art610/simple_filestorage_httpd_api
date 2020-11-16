@@ -102,9 +102,6 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                     client_socket.close()
 
 
-
-
-
 @logger.catch
 def check_request_by_first_line(request_first_line: List, methods: Tuple,
                                 http_versions: Tuple) -> int:
