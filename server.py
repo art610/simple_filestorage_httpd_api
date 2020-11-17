@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Union, Tuple, List, Dict
 from loguru import logger
 
-logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG",
+logger.add("./log/debug.log", format="{time} {level} {message}", level="DEBUG",
            rotation="10KB")
 logger = logger.opt(colors=True)
 
@@ -162,7 +162,7 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
 
 
 @logger.catch
-def check_post_request(req_headers_dict, req_body):
+def check_post_request(req_headers: Dict, req_body: bytes):
     """
     Проверка POST-запроса перед обработкой
 
@@ -175,10 +175,16 @@ def check_post_request(req_headers_dict, req_body):
     :param req_body:
     :return: True - если запрос правильный, в противном случае False
     """
-
-    content_type = req_headers_dict["Content-Type"]
-    content_length = req_headers_dict["Content-Length"]
-    boundary = content_type.split('; ')[1].split('=')[1]
+    try:
+        content_type = req_headers["Content-Type"]
+        content_length = req_headers["Content-Length"]
+        boundary = content_type.split('; ')[1].split('=')[1]
+    except KeyError as key_error:
+        logger.error("{}", key_error)
+        return False
+    except IndexError as index_error:
+        logger.error("{}", index_error)
+        return False
 
     # проверим, что каждый элемент что-либо содержит
     if not (content_type and content_length and boundary and req_body):
@@ -195,7 +201,7 @@ def check_post_request(req_headers_dict, req_body):
 
 @logger.catch
 def serve_post_request(client_sock: socket.socket, server_buffer: int,
-                       req_headers: Dict, req_body: bytes):
+                       req_headers: Dict, req_body: bytes) -> Tuple[str, int]:
     """
 
     :param client_sock:
@@ -217,7 +223,7 @@ def serve_post_request(client_sock: socket.socket, server_buffer: int,
 
     # Если is_file_received = False, возвращаем 500 Internal Server Error
     if not is_file_received:
-        return 500
+        return '', 500
 
     # Если файл был успешно загружен, то получаем его хэш
     file_hash = get_hash_md5(temp_file)
@@ -258,8 +264,8 @@ def serve_post_request(client_sock: socket.socket, server_buffer: int,
 
 @logger.catch
 def receive_file_from_client(client_sock: socket.socket, server_buffer: int,
-                             content_len, boundary, req_body: bytes,
-                             filename: str):
+                             content_len: str, boundary: str, req_body: bytes,
+                             filename: str) -> bool:
     """
     Функция позволяет получить файл от клиента и записать его в filename
 
@@ -297,19 +303,19 @@ def receive_file_from_client(client_sock: socket.socket, server_buffer: int,
 
 
 @logger.catch
-def get_hash_md5(filename):
+def get_hash_md5(filename: str) -> str:
     """
     Simple hash MD5 algorithm using hashlib
     """
     # OPTIMIZE: use more fast hash algorithm
-    with open(filename, 'rb') as f:
-        m = hashlib.md5()
+    with open(filename, 'rb') as reading_file:
+        hash_obj = hashlib.md5()
         while True:
-            data = f.read(8192)
+            data = reading_file.read(8192)
             if not data:
                 break
-            m.update(data)
-        return m.hexdigest()
+            hash_obj.update(data)
+        return hash_obj.hexdigest()
 
 
 # ======================= POST METHOD IMPLEMENTATION ==================END=====

@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 from loguru import logger
 
-logger.add("./debug.log", format="{time} {level} {message}", level="DEBUG",
+logger.add("./log/client/debug.log", format="{time} {level} {message}", level="DEBUG",
            rotation="10KB")
 logger = logger.opt(colors=True)
 
