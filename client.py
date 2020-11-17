@@ -65,16 +65,17 @@ def send_post_request(server_host, file_sample):
     file_stream = open(file_sample, 'rb')
 
     with requests.Session() as session:
-        resp = requests.post(server_host, data=file_read_by_chunks(file_stream,
-                                                                   boundary),
-                             headers=custom_header)
-        logger.debug(resp)
-        file_hash = resp.content.decode()
+        server_response = requests.post(server_host,
+                                        data=file_read_by_chunks(file_stream,
+                                                                 boundary),
+                                        headers=custom_header)
+        logger.debug(server_response)
+        response_file_hash = server_response.content.decode()
         session.close()
 
     file_stream.close()
 
-    return resp, file_hash
+    return server_response, response_file_hash
 
 
 if __name__ == '__main__':
