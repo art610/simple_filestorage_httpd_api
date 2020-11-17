@@ -15,6 +15,7 @@ logger = logger.opt(colors=True)
 
 METHODS: Tuple[str, ...] = ('GET', 'POST', 'DELETE')
 HTTP_VERSIONS: Tuple[str, ...] = ('HTTP/1.1',)
+STORAGE_DIR = str(Path().parent.absolute()) + '/store/'
 
 
 @logger.catch
@@ -90,25 +91,33 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
 
                 elif method == 'POST':
                     # TODO: Implement - file uploading, issue #4
+                    temp_file = STORAGE_DIR + 'temp'
 
                     # возвращаем True, если проверка прошла успешно
                     if check_post_request(req_headers_dict, req_body):
 
                         try:
                             # пробуем обслужить запрос и получить хэш
-                            file_hash, status = serve_post_request(
-                                client_socket,
-                                buffer_size,
+                            is_file_received = receive_file_from_client(
+                                client_socket, buffer_size,
                                 req_headers_dict,
-                                req_body)
+                                req_body,
+                                temp_file)
 
-                        except RuntimeError as runtime_error:
+                        except Exception as unknown_error:
                             # при возникновении проблем, возвращаем ошибку
+                            logger.error(
+                                "Unknown Error was occurred: {}",
+                                unknown_error)
                             client_socket.send(
-                                "HTTP/1.1 500 InternalServerError\n\n".encode())
+                                b"HTTP/1.1 500 Internal Server Error\n\n")
                             client_socket.close()
 
                         else:
+
+                            file_hash, status = serve_post_request(
+                                is_file_received, STORAGE_DIR, temp_file)
+
                             # если всё прошло успешно - возвращаем ответ 200
                             # вместе с хэшом сохраненного файла
                             if status == 200:
@@ -117,11 +126,13 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                                         file_hash).encode())
                             elif status == 409:
                                 client_socket.send(
-                                    "HTTP/1.1 409 Conflict\n\nFile exists: {}".format(
-                                        file_hash).encode())
+                                    "HTTP/1.1 409 Conflict\n\nFile \
+exists: {}".format(file_hash).encode())
+
                             else:
                                 client_socket.send(
-                                    "HTTP/1.1 500 Internal Server Error\n\n".encode())
+                                    "HTTP/1.1 500 Internal Server \
+Error\n\n".encode())
 
                     else:
                         # можно указать в ответе - что требуется для 200 OK
@@ -162,7 +173,7 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
 
 
 @logger.catch
-def check_post_request(req_headers: Dict, req_body: bytes):
+def check_post_request(req_headers: Dict, req_body: bytes) -> bool:
     """
     Проверка POST-запроса перед обработкой
 
@@ -171,7 +182,7 @@ def check_post_request(req_headers: Dict, req_body: bytes):
     в виде байт для файла, Content-Length для размера файла и проверки
     его правильной загрузки на сервер, а также что-либо в Request Body,
 
-    :param req_headers_dict:
+    :param req_headers:
     :param req_body:
     :return: True - если запрос правильный, в противном случае False
     """
@@ -200,26 +211,17 @@ def check_post_request(req_headers: Dict, req_body: bytes):
 
 
 @logger.catch
-def serve_post_request(client_sock: socket.socket, server_buffer: int,
-                       req_headers: Dict, req_body: bytes) -> Tuple[str, int]:
+def serve_post_request(is_file_received, storage_dir, temp_file) -> Tuple:
     """
+    Основной обработчик для POST запросов
 
-    :param client_sock:
-    :param server_buffer:
-    :param req_headers:
-    :param req_body:
-    :return:
+    :param is_file_received: клиентский сокет
+    :param storage_dir: размер буфера обмена для сервера
+    :param temp_file: словарь из заголовков запроса клиента
+    :return: Кортеж из хэша записанного файла и статус код, определяющий
+    успешность работы функции, если возникли проблемы, то возвращается
+    пустая строка и статус код, определяющий тип проблемы
     """
-    storage_dir = str(Path().parent.absolute()) + '/store/'
-    temp_file = storage_dir + 'temp'
-
-    content_length = req_headers["Content-Length"]
-    boundary = req_headers["Content-Type"].split('; ')[1].split('=')[1]
-
-    is_file_received = receive_file_from_client(client_sock, server_buffer,
-                                                content_length, boundary,
-                                                req_body,
-                                                temp_file)
 
     # Если is_file_received = False, возвращаем 500 Internal Server Error
     if not is_file_received:
@@ -247,7 +249,7 @@ def serve_post_request(client_sock: socket.socket, server_buffer: int,
     check_file = Path(new_file_name)
     if check_file.is_file():
         os.remove(temp_file)
-        status = 409  # 409 Conflict: File Exists
+        status = 409
         logger.error("409 Conflict: File Exists")
         return file_hash, status
 
@@ -264,19 +266,23 @@ def serve_post_request(client_sock: socket.socket, server_buffer: int,
 
 @logger.catch
 def receive_file_from_client(client_sock: socket.socket, server_buffer: int,
-                             content_len: str, boundary: str, req_body: bytes,
+                             req_headers: Dict, req_body: bytes,
                              filename: str) -> bool:
     """
     Функция позволяет получить файл от клиента и записать его в filename
 
     :param client_sock: объект socket для клиента, сделавшего запрос
     :param server_buffer: максимальный размер серверного буфера
-    :param content_len: размер данных для записи
-    :param boundary: граница, которая позволяет определить часть для записи
+    :param req_headers: словарь с заголовками запроса клиента
     :param req_body: тело запроса клиента с данными для записи
     :param filename: имя файла для записи данных
     :return: True - если файл был записан без ошибок
     """
+
+    content_len = req_headers["Content-Length"]
+    boundary = \
+        req_headers["Content-Type"].split('; ')[1].split(
+            '=')[1]
 
     chunk_start = req_body.find(boundary.encode()) + len(boundary)
     chunk = req_body[chunk_start:]
