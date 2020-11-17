@@ -3,12 +3,13 @@ Simple client for test connection
 """
 import socket
 import sys
-import requests
 import uuid
 from pathlib import Path
+import requests
 from loguru import logger
 
-logger.add("./log/client/debug.log", format="{time} {level} {message}", level="DEBUG",
+logger.add("./log/client/debug.log", format="{time} {level} {message}",
+           level="DEBUG",
            rotation="10KB")
 logger = logger.opt(colors=True)
 
@@ -35,21 +36,23 @@ def file_read_by_chunks(file_stream, content_boundary, chunk_size=1024,
     Default chunk size: 1k
     If file not exists can return: [StopIteration: File Not Found Error]
     """
-    try:
-        data = content_boundary.encode()
+    data = content_boundary.encode()
+    yield data
+    while chunks:
+        data = file_stream.read(chunk_size)
+        if not data:
+            break
         yield data
-        while chunks:
-            data = file_stream.read(chunk_size)
-            if not data:
-                break
-            yield data
-            chunks -= 1
-    except FileNotFoundError:
-        return 'File Not Found Error'
+        chunks -= 1
 
 
 def send_post_request(server_host, file_sample):
-
+    """
+    Function for sending post request with file
+    :param server_host:
+    :param file_sample:
+    :return: resp - ответ сервера, file_hash - хэш в теле ответа
+    """
     boundary = '--' + str(uuid.uuid4()) + '--'
 
     custom_header = {"Connection": "close",
@@ -61,18 +64,17 @@ def send_post_request(server_host, file_sample):
 
     file_stream = open(file_sample, 'rb')
 
-    with requests.Session() as s:
-        r = requests.post(server_host, data=file_read_by_chunks(file_stream,
-                                                                boundary),
-                          headers=custom_header)
-        logger.debug(r)
-        file_hash = r.content.decode()
-        r.close()
+    with requests.Session() as session:
+        resp = requests.post(server_host, data=file_read_by_chunks(file_stream,
+                                                                   boundary),
+                             headers=custom_header)
+        logger.debug(resp)
+        file_hash = resp.content.decode()
+        session.close()
 
     file_stream.close()
 
-    print(file_hash)
-    # r = requests.get(server_host, params=r.content)
+    return resp, file_hash
 
 
 if __name__ == '__main__':
@@ -80,8 +82,8 @@ if __name__ == '__main__':
     server_port: int = 9000
     SERVER_HTTP_ADDR = 'http://' + server_addr + ':' + str(server_port)
     chunk: int = 1024
-    current_dir = str(Path().parent.absolute()) + '/'
-    FILE_SAMPLE = current_dir + 'sample_file.txt'
+    CURRENT_DIR = str(Path().parent.absolute()) + '/'
+    FILE_SAMPLE = CURRENT_DIR + 'sample_file.txt'
 
     try:
         server_addr = sys.argv[1]
@@ -92,23 +94,23 @@ if __name__ == '__main__':
         logger.info('<red>Server port: {}</>', server_port)
         logger.info('Chunk: {}', chunk)
 
-    # logger.info('Non HTTP request: {}',
-    #             send_non_http_request(server_addr, server_port, chunk))
+    logger.info('Non HTTP request: {}',
+                send_non_http_request(server_addr, server_port, chunk))
 
-    # request_header = requests.get(SERVER_HTTP_ADDR)
-    # request_body = request_header.content
-    # logger.info('GET empty request: {}\n {}', request_header, request_body)
-    # request_header.close()
+    request_header = requests.get(SERVER_HTTP_ADDR)
+    request_body = request_header.content
+    logger.info('GET empty request: {}\n {}', request_header, request_body)
+    request_header.close()
 
-    send_post_request(SERVER_HTTP_ADDR, FILE_SAMPLE)
+    resp, file_hash = send_post_request(SERVER_HTTP_ADDR, FILE_SAMPLE)
+    logger.info('POST request: {}\n{}', resp, file_hash)
 
-
-    # request_header = requests.post(SERVER_HTTP_ADDR)
-    # request_body = request_header.content
-    # logger.info('POST empty request: {}\n {}', request_header, request_body)
-    # request_header.close()
+    request_header = requests.post(SERVER_HTTP_ADDR)
+    request_body = request_header.content
+    logger.info('POST empty request: {}\n {}', request_header, request_body)
+    request_header.close()
 
     # request_header = requests.delete(SERVER_HTTP_ADDR)
     # request_body = request_header.content
-    # logger.info('DELETE empty request: {}\n {}', request_header, request_body)
+
     # request_header.close()
