@@ -14,6 +14,54 @@ from file_hashing import get_hash_md5
 # STORE = {}
 # Потребуется реализовать проверку файлов на дубликаты в хранилище
 
+def post_request_handler(client_socket, buffer_size, req_headers_dict,
+                         req_body) -> Tuple[str, int]:
+    """
+    Функция позволяет обработать POST-запрос от клиента
+
+    :param client_socket: клиентский сокет
+    :param buffer_size: размер серверного буфера
+    :param req_headers_dict: словарь с заголовками запроса (без первой строки)
+    :param req_body: тело запроса от клиента или его часть
+    :return: возвращаем кортеж из:
+    file_hash - символьная строка с хэшом, в случае проблем
+    возвращаем пустую строку
+    status - целое число, определяюще статус код, который требуется отдать
+    """
+    storage_dir = str(Path().parent.absolute()) + '/store/'
+    temp_file = storage_dir + 'temp.data'
+
+    # возвращаем True, если проверка прошла успешно
+    if check_post_request(req_headers_dict,
+                          req_body):
+
+        try:
+            is_file_received = receive_file_from_client(
+                client_socket, buffer_size,
+                req_headers_dict,
+                req_body,
+                temp_file)
+
+        except Exception as unknown_error:
+            logger.error("Unknown Error was occurred: {}", unknown_error)
+            file_hash = ''  # Can't get file_hash
+            status = 500  # 500 Internal Server Error
+
+            return file_hash, status
+
+        else:
+            file_hash, status = serve_post_request(is_file_received,
+                                                   storage_dir, temp_file)
+            return file_hash, status
+
+    else:
+        logger.debug(
+            "400 Bad Request: \nRequest header: {} \n Request body: {}",
+            req_headers_dict, req_body)
+        file_hash = ''  # Can't get file_hash
+        status = 400  # 400 Bad Request
+        return file_hash, status
+
 
 @logger.catch
 def check_post_request(req_headers: Dict, req_body: bytes) -> bool:

@@ -89,54 +89,27 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                         "HTTP/1.1 200 OK\n\nGET method".encode())
 
                 elif method == 'POST':
-                    temp_file = STORAGE_DIR + 'temp.data'
+                    file_hash, status = post.post_request_handler(
+                        client_socket, buffer_size,
+                        req_headers_dict,
+                        req_body)
 
-                    # возвращаем True, если проверка прошла успешно
-                    if post.check_post_request(req_headers_dict,
-                                               req_body):
+                    if status == 200:
+                        client_socket.send(
+                            "HTTP/1.1 200 OK\n\n{}".format(file_hash).encode())
 
-                        try:
-                            # пробуем обслужить запрос и получить хэш
-                            is_file_received = post.receive_file_from_client(
-                                client_socket, buffer_size,
-                                req_headers_dict,
-                                req_body,
-                                temp_file)
+                    elif status == 409:
+                        client_socket.send(
+                            "HTTP/1.1 409 Conflict\n\n{}".format(
+                                file_hash).encode())
 
-                        except Exception as unknown_error:
-                            # при возникновении проблем, возвращаем ошибку
-                            logger.error(
-                                "Unknown Error was occurred: {}",
-                                unknown_error)
-                            client_socket.send(
-                                b"HTTP/1.1 500 Internal Server Error\n\n")
-                            client_socket.close()
-
-                        else:
-
-                            file_hash, status = post.serve_post_request(
-                                is_file_received, STORAGE_DIR, temp_file)
-
-                            # если всё прошло успешно - возвращаем ответ 200
-                            # вместе с хэшом сохраненного файла
-                            if status == 200:
-                                client_socket.send(
-                                    "HTTP/1.1 200 OK\n\n{}".format(
-                                        file_hash).encode())
-                            elif status == 409:
-                                client_socket.send(
-                                    "HTTP/1.1 409 \
-Conflict\n\n{}".format(file_hash).encode())
-
-                            else:
-                                client_socket.send(
-                                    "HTTP/1.1 500 Internal Server \
-Error\n\n".encode())
-
-                    else:
-                        # можно указать в ответе - что требуется для 200 OK
+                    elif status == 400:
                         client_socket.send(
                             "HTTP/1.1 400 Bad Request\n\n".encode())
+
+                    else:
+                        client_socket.send(
+                            "HTTP/1.1 500 Internal Server Error\n\n".encode())
 
                 else:  # method == DELETE
                     # TODO: Implement - file deletion, issue #6
