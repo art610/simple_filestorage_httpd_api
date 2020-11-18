@@ -56,8 +56,6 @@ def test_response_for_incorrect_request_http_protocol_version():
     server_sock.send("Hello world".encode())
     server_response = server_sock.recv(1024)
 
-    server_sock.close()
-
     assert server_response == b"HTTP/1.1 400 Bad Request\n\n"
 
 
