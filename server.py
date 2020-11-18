@@ -9,6 +9,7 @@ from typing import Union, Tuple, List, Dict
 from loguru import logger
 import post_handler as post
 import get_handler as get
+import delete_handler
 
 logger.add("./log/debug.log", format="{time} {level} {message}", level="DEBUG",
            rotation="10KB")
@@ -83,12 +84,12 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
             if first_status == 200:  # 200 OK
 
                 method = first_req_line[0]
+                url_string = first_req_line[1]
 
                 if method == 'GET':
                     # TODO: Implement - file downloading, issue #5
                     logger.debug('GET method')
 
-                    url_string = first_req_line[1]
                     file_hash, file_abs_path = find_file_hash_in_req(
                         url_string)
 
@@ -134,8 +135,25 @@ Internal Server Error\n\n".encode())
                 else:  # method == DELETE
                     # TODO: Implement - file deletion, issue #6
                     logger.debug('DELETE method')
-                    client_socket.send(
-                        "HTTP/1.1 200 OK\n\n DELETE method".encode())
+
+                    file_hash, abs_path = find_file_hash_in_req(
+                        url_string)
+
+                    if file_hash == '400':
+                        client_socket.send(
+                            "HTTP/1.1 400 Bad Request\n\n".encode())
+                    elif file_hash == '404':
+                        client_socket.send(
+                            "HTTP/1.1 404 Not Found\n\n".encode())
+                    else:
+                        is_ok = delete_handler.delete_file(file_hash, abs_path)
+
+                        if is_ok:
+                            client_socket.send(
+                                "HTTP/1.1 200 OK\n\n DELETE method".encode())
+                        else:
+                            client_socket.send("HTTP/1.1 500 Internal Server \
+Error\n\n".encode())
 
             else:
                 if first_status == 405:

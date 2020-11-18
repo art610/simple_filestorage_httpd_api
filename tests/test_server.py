@@ -14,7 +14,7 @@ from server import run_server
 from client import send_post_request
 
 SERVER_ADDR: str = 'localhost'
-SERVER_PORT: int = 11200
+SERVER_PORT: int = 9000
 SERVER_URL = 'http://' + SERVER_ADDR + ':' + str(SERVER_PORT)
 
 LISTEN_CLIENTS_NUMB: int = 12
@@ -38,7 +38,7 @@ def test_response_for_incorrect_request_method():
     """
     Simple test for incorrect request method to HTTP-server
     """
-    time.sleep(3)
+    time.sleep(1)
     with requests.Session() as s:
         request = requests.put(SERVER_URL)
         s.close()
@@ -129,13 +129,13 @@ def test_response_for_get_request_if_file_exists_in_store():
 
     is_ok = write_temp_len == filename_len
     os.remove(write_temp)
-    os.remove(filename)
-    os.rmdir(file_dir)
+    # os.remove(filename)
+    # os.rmdir(file_dir)
 
     assert is_ok
 
 
-def test_response_for_delete_request():
+def test_response_for_incorrect_delete_request():
     """
     Simple test for DELETE request to HTTP-server
     """
@@ -143,9 +143,27 @@ def test_response_for_delete_request():
         request = requests.delete(SERVER_URL)
         s.close()
 
-    assert request.status_code == 200
+    assert request.status_code == 400
 
 
-# Input point if we directly run this script
+def test_response_for_delete_request():
+    """
+    Simple test for DELETE request to HTTP-server
+    """
+    base_dir = str(Path().parent.absolute())
+    file_hash = '59c19f7df4ceba37936035844bb2ab5c'
+    file_dir = base_dir + '/store/59/'
+    filename = file_dir + file_hash
+
+    requests.delete(SERVER_URL, params={'file_hash': file_hash})
+
+    check_file = Path(filename)
+    is_file_was_deleted = not check_file.is_file()
+    check_dir = Path(file_dir)
+    is_dir_was_deleted = not check_dir.is_dir()
+
+    assert is_file_was_deleted and is_dir_was_deleted
+
+
 if __name__ == "__main__":
     pass
