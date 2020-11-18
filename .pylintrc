@@ -3,3 +3,8 @@ fail-under=7
 disable=
     F0001, # No module named test_main.py (fatal)
     W0511,
+    R0914, # Too many local variables (> 15) (too-many-locals)
+    W0703, # Catching too general exception Exception (broad-except)
+    R1702, # Too many nested blocks (> 5) (too-many-nested-blocks)
+    R0912, # Too many branches (> 12) (too-many-branches)
+    R0915, # Too many statements (> 50) (too-many-statements)

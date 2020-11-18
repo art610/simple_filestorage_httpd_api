@@ -3,15 +3,18 @@ Unit tests for server module [pytest]
 
 Short description. Can help with autogenerate docs.
 """
+import os
 import threading
 import socket
 import time
 import requests
 import pytest
+from pathlib import Path
 from server import run_server
+from client import send_post_request
 
 SERVER_ADDR: str = 'localhost'
-SERVER_PORT: int = 9000
+SERVER_PORT: int = 11200
 SERVER_URL = 'http://' + SERVER_ADDR + ':' + str(SERVER_PORT)
 
 LISTEN_CLIENTS_NUMB: int = 12
@@ -69,7 +72,7 @@ def test_response_for_get_request():
     assert request.status_code == 200
 
 
-def test_response_for_post_request():
+def test_response_for_incorrect_post_request():
     """
     Simple test for POST request to HTTP-server
     """
@@ -77,7 +80,42 @@ def test_response_for_post_request():
         request = requests.post(SERVER_URL)
         s.close()
 
-    assert request.status_code == 200
+    assert request.status_code == 400
+
+
+def test_response_for_post_request():
+    """
+    Simple test for POST request to HTTP-server
+    """
+
+    base_dir = str(Path().parent.absolute())
+    # temp_file = base_dir + '/store/temp.data'
+    # os.mknod(temp_file)
+    current_dir = base_dir + '/tests/assets/'
+    file_sample = current_dir + 'sample_image.jpg'
+    resp, file_hash = send_post_request(SERVER_URL, file_sample)
+
+    assert resp.status_code == 200
+
+
+def test_response_for_post_request_if_file_exists():
+    """
+    Simple test for POST request to HTTP-server
+    """
+    base_dir = str(Path().parent.absolute())
+    current_dir = base_dir + '/tests/assets/'
+    storage = base_dir + '/store/'
+
+    file_sample = current_dir + 'sample_image.jpg'
+    resp, file_hash = send_post_request(SERVER_URL, file_sample)
+
+    uploaded_file_dir = storage + file_hash[:2] + "/"
+    uploaded_file = uploaded_file_dir + file_hash
+
+    os.remove(uploaded_file)
+    os.rmdir(uploaded_file_dir)
+
+    assert resp.status_code == 409
 
 
 def test_response_for_delete_request():
