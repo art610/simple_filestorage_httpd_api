@@ -27,9 +27,9 @@ on:
       - 'pytest.ini'
       - '.gitignore'
       - '.pylintrc'
-  pull_request:
-    branches:
-      - develop
+#  pull_request:
+#    branches:
+#      - develop
 
 jobs:
   lint:
