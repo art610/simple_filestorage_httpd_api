@@ -4,10 +4,11 @@
 import os
 import sys
 import socket
-import hashlib
 from pathlib import Path
 from typing import Union, Tuple, List, Dict
 from loguru import logger
+import post_handler as post
+import get_handler as get
 
 logger.add("./log/debug.log", format="{time} {level} {message}", level="DEBUG",
            rotation="10KB")
@@ -76,68 +77,59 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
             logger.debug("<cyan>Request headers:</>\n{}", req_headers_dict)
             logger.debug("<cyan>Request body:</>\n{}", req_body)
 
-            resp_status_code = check_request_by_first_line(first_req_line,
-                                                           methods,
-                                                           http_versions)
-            if resp_status_code == 200:  # 200 OK
+            first_status = check_request_by_first_line(first_req_line,
+                                                       methods,
+                                                       http_versions)
+            if first_status == 200:  # 200 OK
 
                 method = first_req_line[0]
 
                 if method == 'GET':
                     # TODO: Implement - file downloading, issue #5
                     logger.debug('GET method')
-                    client_socket.send(
-                        "HTTP/1.1 200 OK\n\nGET method".encode())
 
-                elif method == 'POST':
-                    # TODO: Implement - file uploading, issue #4
-                    temp_file = STORAGE_DIR + 'temp.data'
+                    url_string = first_req_line[1]
+                    file_hash, file_abs_path = find_file_hash_in_req(
+                        url_string)
 
-                    # возвращаем True, если проверка прошла успешно
-                    if check_post_request(req_headers_dict, req_body):
-
-                        try:
-                            # пробуем обслужить запрос и получить хэш
-                            is_file_received = receive_file_from_client(
-                                client_socket, buffer_size,
-                                req_headers_dict,
-                                req_body,
-                                temp_file)
-
-                        except Exception as unknown_error:
-                            # при возникновении проблем, возвращаем ошибку
-                            logger.error(
-                                "Unknown Error was occurred: {}",
-                                unknown_error)
-                            client_socket.send(
-                                b"HTTP/1.1 500 Internal Server Error\n\n")
-                            client_socket.close()
-
-                        else:
-
-                            file_hash, status = serve_post_request(
-                                is_file_received, STORAGE_DIR, temp_file)
-
-                            # если всё прошло успешно - возвращаем ответ 200
-                            # вместе с хэшом сохраненного файла
-                            if status == 200:
-                                client_socket.send(
-                                    "HTTP/1.1 200 OK\n\n{}".format(
-                                        file_hash).encode())
-                            elif status == 409:
-                                client_socket.send(
-                                    "HTTP/1.1 409 \
-Conflict\n\n{}".format(file_hash).encode())
-
-                            else:
-                                client_socket.send(
-                                    "HTTP/1.1 500 Internal Server \
-Error\n\n".encode())
-
-                    else:
-                        # можно указать в ответе - что требуется для 200 OK
+                    if file_hash == '400':
                         client_socket.send(
                             "HTTP/1.1 400 Bad Request\n\n".encode())
+                    elif file_hash == '404':
+                        client_socket.send(
+                            "HTTP/1.1 404 Not Found\n\n".encode())
+                    else:
+                        client_socket.send("HTTP/1.1 200 OK\n\n".encode())
+
+                        is_ok = get.send_file_to_client(client_socket,
+                                                        file_abs_path)
+
+                        if not is_ok:
+                            client_socket.send("HTTP/1.1 500 \
+Internal Server Error\n\n".encode())
+
+                elif method == 'POST':
+                    file_hash, status = post.post_request_handler(
+                        client_socket, buffer_size,
+                        req_headers_dict,
+                        req_body)
+
+                    if status == 200:
+                        client_socket.send(
+                            "HTTP/1.1 200 OK\n\n{}".format(file_hash).encode())
+
+                    elif status == 409:
+                        client_socket.send(
+                            "HTTP/1.1 409 Conflict\n\n{}".format(
+                                file_hash).encode())
+
+                    elif status == 400:
+                        client_socket.send(
+                            "HTTP/1.1 400 Bad Request\n\n".encode())
+
+                    else:
+                        client_socket.send(
+                            "HTTP/1.1 500 Internal Server Error\n\n".encode())
 
                 else:  # method == DELETE
                     # TODO: Implement - file deletion, issue #6
@@ -146,13 +138,13 @@ Error\n\n".encode())
                         "HTTP/1.1 200 OK\n\n DELETE method".encode())
 
             else:
-                if resp_status_code == 405:
+                if first_status == 405:
                     logger.debug('405 Method Not Allowed: {}',
                                  first_req_line[0])
                     client_socket.send(
                         "HTTP/1.1 405 Method Not Allowed\n\n".encode())
 
-                elif resp_status_code == 505:
+                elif first_status == 505:
                     logger.debug('505 HTTP Version Not Supported: {}',
                                  first_req_line[2])
                     client_socket.send(
@@ -165,166 +157,37 @@ Error\n\n".encode())
             client_socket.close()
 
 
-# =====START=============== POST METHOD IMPLEMENTATION ========================
-
-# Можно добавлять хэши файлов в отдельное хранилище ключ-значение
-# STORE = {}
-# Потребуется реализовать проверку файлов на дубликаты в хранилище
-
-
-@logger.catch
-def check_post_request(req_headers: Dict, req_body: bytes) -> bool:
+def find_file_hash_in_req(uri: str) -> Tuple[str, str]:
     """
-    Проверка POST-запроса перед обработкой
 
-    Функция для проверки структуры содержимого POST-запроса, который должен
-    содержать заголовок Content-Type с указанием boundary для границ данных
-    в виде байт для файла, Content-Length для размера файла и проверки
-    его правильной загрузки на сервер, а также что-либо в Request Body,
-
-    :param req_headers:
-    :param req_body:
-    :return: True - если запрос правильный, в противном случае False
+    :param uri:
+    :return:
     """
     try:
-        content_type = req_headers["Content-Type"]
-        content_length = req_headers["Content-Length"]
-        boundary = content_type.split('; ')[1].split('=')[1]
-    except KeyError as key_error:
-        logger.error("{}", key_error)
-        return False
-    except IndexError as index_error:
-        logger.error("{}", index_error)
-        return False
+        params = {}
+        for param in uri.split('?')[1].split('&'):
+            param_key, param_value = param.split('=')
+            params[param_key] = param_value
+        print("All parameters in request", params)
 
-    # проверим, что каждый элемент что-либо содержит
-    if not (content_type and content_length and boundary and req_body):
-        return False
+        file_hash = params['file_hash']
 
-    # Возможность привести содержимое Content-Length к целочисленному типу int
-    try:
-        int(content_length)
-    except ValueError:
-        return False
+        if file_hash:
+            file_store_dir = file_hash[:2]
+            file_abs_path = STORAGE_DIR + file_store_dir + "/" + file_hash
 
-    return True  # 200 OK
+            if os.path.exists(file_abs_path):
+                return file_hash, file_abs_path
 
+            return '404', ''  # File Not Found
 
-@logger.catch
-def serve_post_request(is_file_received, storage_dir, temp_file) -> Tuple:
-    """
-    Основной обработчик для POST запросов
+        return '400', ''  # Bad Request
 
-    :param is_file_received: клиентский сокет
-    :param storage_dir: размер буфера обмена для сервера
-    :param temp_file: словарь из заголовков запроса клиента
-    :return: Кортеж из хэша записанного файла и статус код, определяющий
-    успешность работы функции, если возникли проблемы, то возвращается
-    пустая строка и статус код, определяющий тип проблемы
-    """
+    except IndexError:
+        return '400', ''  # Bad Request
+    except KeyError:
+        return '400', ''  # Bad Request
 
-    # Если is_file_received = False, возвращаем 500 Internal Server Error
-    if not is_file_received:
-        return '', 500
-
-    # Если файл был успешно загружен, то получаем его хэш
-    file_hash = get_hash_md5(temp_file)
-    # Пара первых символов хэша становится названием каталога для файла
-    hash_first_symbols = file_hash[:2]
-    # Полное имя файла
-    new_dir = storage_dir + hash_first_symbols
-
-    # Проверяем правильность создания директории
-    check_dir = Path(new_dir)
-    if not check_dir.is_dir():
-        try:
-            os.mkdir(new_dir)
-        except OSError:
-            logger.error("Creation of the directory {} failed", new_dir)
-        else:
-            logger.success("Successfully created the directory {} ", new_dir)
-
-    new_file_name = new_dir + '/' + file_hash
-
-    check_file = Path(new_file_name)
-    if check_file.is_file():
-        os.remove(temp_file)
-        status = 409
-        logger.error("409 Conflict: File Exists")
-        return file_hash, status
-
-    # Добавлен новый файл
-    os.rename(temp_file, new_file_name)
-    status = 200
-
-    # Add new entity to key:value STORE
-    # STORE[file_hash] = new_file_name
-    # print(STORE)
-
-    return file_hash, status
-
-
-@logger.catch
-def receive_file_from_client(client_sock: socket.socket, server_buffer: int,
-                             req_headers: Dict, req_body: bytes,
-                             filename: str) -> bool:
-    """
-    Функция позволяет получить файл от клиента и записать его в filename
-
-    :param client_sock: объект socket для клиента, сделавшего запрос
-    :param server_buffer: максимальный размер серверного буфера
-    :param req_headers: словарь с заголовками запроса клиента
-    :param req_body: тело запроса клиента с данными для записи
-    :param filename: имя файла для записи данных
-    :return: True - если файл был записан без ошибок
-    """
-
-    content_len = req_headers["Content-Length"]
-    boundary = \
-        req_headers["Content-Type"].split('; ')[1].split(
-            '=')[1]
-
-    chunk_start = req_body.find(boundary.encode()) + len(boundary)
-    chunk = req_body[chunk_start:]
-
-    write_file = open(filename, 'wb')
-    write_file.write(chunk)
-
-    start_count_len = len(chunk)
-    while start_count_len < int(content_len):
-        chunk = client_sock.recv(server_buffer)
-        if chunk == '':
-            write_file.close()
-            logger.error("500 Internal Server Error: Socket connection broken")
-            return False
-        write_file.write(chunk)
-        start_count_len += len(chunk)
-    write_file.close()
-    if int(content_len) != int(
-            Path(filename).stat().st_size):
-        logger.error("500 Internal Server Error: Socket connection broken")
-        return False
-
-    return True
-
-
-@logger.catch
-def get_hash_md5(filename: str) -> str:
-    """
-    Simple hash MD5 algorithm using hashlib
-    """
-    # OPTIMIZE: use more fast hash algorithm
-    with open(filename, 'rb') as reading_file:
-        hash_obj = hashlib.md5()
-        while True:
-            data = reading_file.read(8192)
-            if not data:
-                break
-            hash_obj.update(data)
-        return hash_obj.hexdigest()
-
-
-# ======================= POST METHOD IMPLEMENTATION ==================END=====
 
 @logger.catch
 def check_request_by_first_line(request_first_line: List, methods: Tuple,

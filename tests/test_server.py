@@ -56,12 +56,10 @@ def test_response_for_incorrect_request_http_protocol_version():
     server_sock.send("Hello world".encode())
     server_response = server_sock.recv(1024)
 
-    server_sock.close()
-
     assert server_response == b"HTTP/1.1 400 Bad Request\n\n"
 
 
-def test_response_for_get_request():
+def test_response_for_empty_get_request():
     """
     Simple test for GET request to HTTP-server
     """
@@ -69,7 +67,7 @@ def test_response_for_get_request():
         request = requests.get(SERVER_URL)
         s.close()
 
-    assert request.status_code == 200
+    assert request.status_code == 400
 
 
 def test_response_for_incorrect_post_request():
@@ -87,10 +85,7 @@ def test_response_for_post_request():
     """
     Simple test for POST request to HTTP-server
     """
-
     base_dir = str(Path().parent.absolute())
-    # temp_file = base_dir + '/store/temp.data'
-    # os.mknod(temp_file)
     current_dir = base_dir + '/tests/assets/'
     file_sample = current_dir + 'sample_image.jpg'
     resp, file_hash = send_post_request(SERVER_URL, file_sample)
@@ -104,18 +99,40 @@ def test_response_for_post_request_if_file_exists():
     """
     base_dir = str(Path().parent.absolute())
     current_dir = base_dir + '/tests/assets/'
-    storage = base_dir + '/store/'
-
     file_sample = current_dir + 'sample_image.jpg'
     resp, file_hash = send_post_request(SERVER_URL, file_sample)
 
-    uploaded_file_dir = storage + file_hash[:2] + "/"
-    uploaded_file = uploaded_file_dir + file_hash
-
-    os.remove(uploaded_file)
-    os.rmdir(uploaded_file_dir)
-
     assert resp.status_code == 409
+
+
+def test_response_for_get_request_if_file_exists_in_store():
+    """
+    Simple test for GET request to HTTP-server
+    """
+    base_dir = str(Path().parent.absolute())
+    file_hash = '59c19f7df4ceba37936035844bb2ab5c'
+    file_dir = base_dir + '/store/59/'
+    filename = file_dir + file_hash
+
+    params = {'file_hash': file_hash}
+
+    response_for_get = requests.get(SERVER_URL, params=params, stream=True)
+
+    write_temp = 'write_temp.data'
+    if response_for_get.status_code == 200:
+        file = open(write_temp, "wb")
+        for chunk_size in response_for_get.iter_content(chunk_size=1024):
+            file.write(chunk_size)
+        file.close()
+    write_temp_len = Path(write_temp).stat().st_size
+    filename_len = Path(filename).stat().st_size
+
+    is_ok = write_temp_len == filename_len
+    os.remove(write_temp)
+    os.remove(filename)
+    os.rmdir(file_dir)
+
+    assert is_ok
 
 
 def test_response_for_delete_request():
