@@ -87,10 +87,7 @@ def test_response_for_post_request():
     """
     Simple test for POST request to HTTP-server
     """
-
     base_dir = str(Path().parent.absolute())
-    # temp_file = base_dir + '/store/temp.data'
-    # os.mknod(temp_file)
     current_dir = base_dir + '/tests/assets/'
     file_sample = current_dir + 'sample_image.jpg'
     resp, file_hash = send_post_request(SERVER_URL, file_sample)
@@ -104,7 +101,6 @@ def test_response_for_post_request_if_file_exists():
     """
     base_dir = str(Path().parent.absolute())
     current_dir = base_dir + '/tests/assets/'
-
     file_sample = current_dir + 'sample_image.jpg'
     resp, file_hash = send_post_request(SERVER_URL, file_sample)
 
