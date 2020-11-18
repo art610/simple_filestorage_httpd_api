@@ -126,8 +126,8 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                                         file_hash).encode())
                             elif status == 409:
                                 client_socket.send(
-                                    "HTTP/1.1 409 Conflict\n\nFile \
-exists: {}".format(file_hash).encode())
+                                    "HTTP/1.1 409 \
+Conflict\n\n{}".format(file_hash).encode())
 
                             else:
                                 client_socket.send(

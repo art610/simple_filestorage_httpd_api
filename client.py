@@ -106,12 +106,14 @@ if __name__ == '__main__':
     resp, file_hash = send_post_request(SERVER_HTTP_ADDR, FILE_SAMPLE)
     logger.info('POST request: {}\n{}', resp, file_hash)
 
+    STORAGE = CURRENT_DIR + 'store/'
+    uploaded_file_dir = STORAGE + file_hash[:2] + "/"
+    uploaded_file = uploaded_file_dir + file_hash
+
+    logger.debug(uploaded_file_dir)
+    logger.debug(uploaded_file)
+
     request_header = requests.post(SERVER_HTTP_ADDR)
     request_body = request_header.content
     logger.info('POST empty request: {}\n {}', request_header, request_body)
     request_header.close()
-
-    # request_header = requests.delete(SERVER_HTTP_ADDR)
-    # request_body = request_header.content
-
-    # request_header.close()
