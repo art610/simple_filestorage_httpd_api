@@ -104,6 +104,17 @@ def download_file(host_addr, params):
         print(response_for_get)
 
 
+def delete_file(host_addr, params):
+    """
+
+    :param host_addr:
+    :param params:
+    :return:
+    """
+    response_for_delete = requests.delete(url=host_addr, params=params)
+    logger.debug(response_for_delete)
+
+
 if __name__ == '__main__':
     server_addr: str = 'localhost'
     server_port: int = 9000
@@ -146,3 +157,4 @@ if __name__ == '__main__':
 
     FILE_HASH = get_hash_md5(FILE_SAMPLE)
     download_file(SERVER_HTTP_ADDR, {'file_hash': FILE_HASH})
+    delete_file(SERVER_HTTP_ADDR, {'file_hash': FILE_HASH})
