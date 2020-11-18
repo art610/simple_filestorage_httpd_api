@@ -91,7 +91,7 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
 
                 elif method == 'POST':
                     # TODO: Implement - file uploading, issue #4
-                    temp_file = '/' + STORAGE_DIR + 'temp.data'
+                    temp_file = STORAGE_DIR + 'temp.data'
 
                     # возвращаем True, если проверка прошла успешно
                     if check_post_request(req_headers_dict, req_body):
