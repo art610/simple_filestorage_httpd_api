@@ -1,12 +1,14 @@
 """
 Модуль http-сервера с основной реализацией API
 """
+import os
 import sys
 import socket
 from pathlib import Path
 from typing import Union, Tuple, List, Dict
 from loguru import logger
 import post_handler as post
+import get_handler as get
 
 logger.add("./log/debug.log", format="{time} {level} {message}", level="DEBUG",
            rotation="10KB")
@@ -75,18 +77,36 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
             logger.debug("<cyan>Request headers:</>\n{}", req_headers_dict)
             logger.debug("<cyan>Request body:</>\n{}", req_body)
 
-            resp_status_code = check_request_by_first_line(first_req_line,
-                                                           methods,
-                                                           http_versions)
-            if resp_status_code == 200:  # 200 OK
+            first_status = check_request_by_first_line(first_req_line,
+                                                       methods,
+                                                       http_versions)
+            if first_status == 200:  # 200 OK
 
                 method = first_req_line[0]
 
                 if method == 'GET':
                     # TODO: Implement - file downloading, issue #5
                     logger.debug('GET method')
-                    client_socket.send(
-                        "HTTP/1.1 200 OK\n\nGET method".encode())
+
+                    url_string = first_req_line[1]
+                    file_hash, file_abs_path = find_file_hash_in_req(
+                        url_string)
+
+                    if file_hash == '400':
+                        client_socket.send(
+                            "HTTP/1.1 400 Bad Request\n\n".encode())
+                    elif file_hash == '404':
+                        client_socket.send(
+                            "HTTP/1.1 404 Not Found\n\n".encode())
+                    else:
+                        client_socket.send("HTTP/1.1 200 OK\n\n".encode())
+
+                        is_ok = get.send_file_to_client(client_socket,
+                                                        file_abs_path)
+
+                        if not is_ok:
+                            client_socket.send("HTTP/1.1 500 \
+Internal Server Error\n\n".encode())
 
                 elif method == 'POST':
                     file_hash, status = post.post_request_handler(
@@ -118,13 +138,13 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                         "HTTP/1.1 200 OK\n\n DELETE method".encode())
 
             else:
-                if resp_status_code == 405:
+                if first_status == 405:
                     logger.debug('405 Method Not Allowed: {}',
                                  first_req_line[0])
                     client_socket.send(
                         "HTTP/1.1 405 Method Not Allowed\n\n".encode())
 
-                elif resp_status_code == 505:
+                elif first_status == 505:
                     logger.debug('505 HTTP Version Not Supported: {}',
                                  first_req_line[2])
                     client_socket.send(
@@ -135,6 +155,38 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                     client_socket.send("HTTP/1.1 400 Bad Request\n\n".encode())
 
             client_socket.close()
+
+
+def find_file_hash_in_req(uri: str) -> Tuple[str, str]:
+    """
+
+    :param uri:
+    :return:
+    """
+    try:
+        params = {}
+        for param in uri.split('?')[1].split('&'):
+            param_key, param_value = param.split('=')
+            params[param_key] = param_value
+        print("All parameters in request", params)
+
+        file_hash = params['file_hash']
+
+        if file_hash:
+            file_store_dir = file_hash[:2]
+            file_abs_path = STORAGE_DIR + file_store_dir + "/" + file_hash
+
+            if os.path.exists(file_abs_path):
+                return file_hash, file_abs_path
+
+            return '404', ''  # File Not Found
+
+        return '400', ''  # Bad Request
+
+    except IndexError:
+        return '400', ''  # Bad Request
+    except KeyError:
+        return '400', ''  # Bad Request
 
 
 @logger.catch

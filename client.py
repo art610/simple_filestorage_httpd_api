@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 import requests
 from loguru import logger
+from file_hashing import get_hash_md5
 
 logger.add("./log/client/debug.log", format="{time} {level} {message}",
            level="DEBUG",
@@ -78,6 +79,31 @@ def send_post_request(server_host, file_sample):
     return server_response, response_file_hash
 
 
+def download_file(host_addr, params):
+    """
+
+    :param host_addr:
+    :param params:
+    :return:
+    """
+    current_dir = str(Path().parent.absolute()) + '/'
+    if 'file_hash' in params:
+        filename = params['file_hash']
+    else:
+        filename = 'none'
+    full_received_file_name = current_dir + filename
+    response_for_get = requests.get(host_addr, params=params, stream=True)
+    print(response_for_get)
+    if response_for_get.status_code == 200:
+        print(response_for_get)
+        file = open(full_received_file_name, "wb")
+        for chunk_size in response_for_get.iter_content(chunk_size=1024):
+            file.write(chunk_size)
+        file.close()
+    else:
+        print(response_for_get)
+
+
 if __name__ == '__main__':
     server_addr: str = 'localhost'
     server_port: int = 9000
@@ -117,3 +143,6 @@ if __name__ == '__main__':
     request_body = request_header.content
     logger.info('POST empty request: {}\n {}', request_header, request_body)
     request_header.close()
+
+    FILE_HASH = get_hash_md5(FILE_SAMPLE)
+    download_file(SERVER_HTTP_ADDR, {'file_hash': FILE_HASH})
