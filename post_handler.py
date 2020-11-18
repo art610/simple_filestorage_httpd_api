@@ -4,10 +4,10 @@ Implementation of file Uploads on POST method
 
 import os
 import socket
-import hashlib
 from pathlib import Path
 from typing import Tuple, Dict
 from loguru import logger
+from file_hashing import get_hash_md5
 
 
 # Можно добавлять хэши файлов в отдельное хранилище ключ-значение
@@ -149,19 +149,3 @@ def receive_file_from_client(client_sock: socket.socket, server_buffer: int,
         return False
 
     return True
-
-
-@logger.catch
-def get_hash_md5(filename: str) -> str:
-    """
-    Simple hash MD5 algorithm using hashlib
-    """
-    # OPTIMIZE: use more fast hash algorithm
-    with open(filename, 'rb') as reading_file:
-        hash_obj = hashlib.md5()
-        while True:
-            data = reading_file.read(8192)
-            if not data:
-                break
-            hash_obj.update(data)
-        return hash_obj.hexdigest()
