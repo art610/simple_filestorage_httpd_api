@@ -14,7 +14,7 @@ from server import run_server
 from client import send_post_request
 
 SERVER_ADDR: str = 'localhost'
-SERVER_PORT: int = 9000
+SERVER_PORT: int = 11200
 SERVER_URL = 'http://' + SERVER_ADDR + ':' + str(SERVER_PORT)
 
 LISTEN_CLIENTS_NUMB: int = 12
