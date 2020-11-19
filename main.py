@@ -1,11 +1,14 @@
+#!/usr/bin/python3.8
+# -*- coding: UTF-8 -*-
 """
 Данный модуль будет основной точкой входа
 """
 import os
 import sys
-import server
-from daemon import Daemon
 from loguru import logger
+from daemon import Daemon
+import server
+import signal
 
 logger.add("./log/daemon/debug.log", format="{time} {level} {message}",
            level="DEBUG",
@@ -18,35 +21,58 @@ SERVER_PORT: int = 9000
 LISTEN_CLIENTS_NUMB: int = 12
 MAX_SERVER_BUFFER_SIZE: int = 4096
 
+PID_FILE = './daemon_pid.pid'
+STD_IN = os.devnull
+STD_OUT = './log/output.log'
+STD_ERR = './log/error.log'
+HOME_DIR = '.'
+
+
+# STOPPED = False
+
 
 class App(Daemon):
+    """
+    Class App extends Daemon for HTTP-server
+    """
+
     def run(self):
+        """
+        HTTPD
+        """
         server.run_server(SERVER_ADDR, SERVER_PORT, LISTEN_CLIENTS_NUMB,
                           MAX_SERVER_BUFFER_SIZE)
 
 
-pid_file = './daemon_pid.pid'
-stdin = os.devnull
-stdout = './log/output.log'
-stderr = './log/error.log'
-home_dir = '.'
+def stop_sigterm(sig, frame):
+    logger.info("System reboot - daemon was stopped:\n sig: {} \n frame: {}",
+                sig,
+                frame)
 
-daemon_main = App(pid_file, stdin, stdout, stderr, home_dir)
 
-control = sys.argv[1]
+def stop_sighup(sig, frame):
+    logger.info("System reboot - daemon was stopped:\n sig: {} \n frame: {}",
+                sig,
+                frame)
 
-if control == 'start':
-    daemon_main.start()
-elif control == 'stop':
-    daemon_main.stop()
-elif control == 'restart':
-    daemon_main.restart()
-elif control == 'run':
-    daemon_main.run()
-elif control == 'get_pid':
-    logger.info("Daemon PID: {}", daemon_main.get_pid())
-else:
-    daemon_main.is_running()
+
+signal.signal(signal.SIGTERM, stop_sigterm)
+signal.signal(signal.SIGHUP, stop_sighup)
 
 if __name__ == '__main__':
-    pass
+    daemon_main = App(PID_FILE, STD_IN, STD_OUT, STD_ERR, HOME_DIR)
+
+    control = sys.argv[1]
+
+    if control == 'start':
+        daemon_main.start()
+    elif control == 'stop':
+        daemon_main.stop()
+    elif control == 'restart':
+        daemon_main.restart()
+    elif control == 'run':
+        daemon_main.run()
+    elif control == 'get_pid':
+        logger.info("Daemon PID: {}", daemon_main.get_pid())
+    else:
+        daemon_main.is_running()
