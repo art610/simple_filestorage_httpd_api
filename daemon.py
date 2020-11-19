@@ -1,5 +1,6 @@
 #!/usr/bin/python3.8
 # -*- coding: UTF-8 -*-
+
 """
 ***
 Modified generic daemon class
@@ -7,7 +8,9 @@ Modified generic daemon class
 Author:         http://www.jejik.com/articles/2007/02/
                         a_simple_unix_linux_daemon_in_python/www.boxedice.com
 License:        http://creativecommons.org/licenses/by-sa/3.0/
-Changes:        23rd Jan 2009 (David Mytton <david@boxedice.com>)
+
+Modified by (1):    23rd Jan 2009 (David Mytton <david@boxedice.com>)
+Changes (1):
                 - Replaced hard coded '/dev/null in __init__ with os.devnull
                 - Added OS check to conditionally remove code that doesn't
                   work on OS X
@@ -18,9 +21,18 @@ Changes:        23rd Jan 2009 (David Mytton <david@boxedice.com>)
                   (before SystemExit was part of the Exception base)
                 13th Aug 2010 (David Mytton <david@boxedice.com>
                 - Fixed unhandled exception if PID file is empty
+
+Modified by (2):    Artem Zhelonkin (tyo3436@gmail.com)
+Changes (1):
+                - Class 'Daemon' earlie inherits from object, that was safely
+                removed from bases in python3 (useless-object-inheritance)
+                - Remove eventlet import and Daemon __init__ argument
+                - Remove gevent import and Daemon __init__ argument
+                - Add signal.SIGHUP with sigtermhandler func
+                - Add logger with Loguru
+                - Add changes with PEP8
 """
 
-# Core modules
 from __future__ import print_function
 import atexit
 import errno
@@ -28,9 +40,15 @@ import os
 import sys
 import time
 import signal
+from loguru import logger
+
+logger.add("./log/daemon/debug.log", format="{time} {level} {message}",
+           level="DEBUG",
+           rotation="10MB")
+logger = logger.opt(colors=True)
 
 
-class Daemon(object):
+class Daemon:
     """
     A generic daemon class.
     Usage: subclass the Daemon class and override the run() method
@@ -38,8 +56,7 @@ class Daemon(object):
 
     def __init__(self, pidfile, stdin=os.devnull,
                  stdout=os.devnull, stderr=os.devnull,
-                 home_dir='.', umask=0o22, verbose=1,
-                 use_gevent=False, use_eventlet=False):
+                 home_dir='.', umask=0o22, verbose=1):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -48,12 +65,15 @@ class Daemon(object):
         self.verbose = verbose
         self.umask = umask
         self.daemon_alive = True
-        self.use_gevent = use_gevent
-        self.use_eventlet = use_eventlet
 
     def log(self, *args):
+        """
+
+        :param args:
+        :return:
+        """
         if self.verbose >= 1:
-            print(*args)
+            logger.info(*args)
 
     def daemonize(self):
         """
@@ -61,17 +81,15 @@ class Daemon(object):
         Programming in the UNIX Environment" for details (ISBN 0201563177)
         http://www.erlenstar.demon.co.uk/unix/faq_2.html#SEC16
         """
-        if self.use_eventlet:
-            import eventlet.tpool
-            eventlet.tpool.killall()
         try:
             pid = os.fork()
             if pid > 0:
                 # Exit first parent
                 sys.exit(0)
-        except OSError as e:
+        except OSError as os_error:
             sys.stderr.write(
-                "fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
+                "fork #1 failed: %d (%s)\n" % (
+                    os_error.errno, os_error.strerror))
             sys.exit(1)
 
         # Decouple from parent environment
@@ -85,41 +103,41 @@ class Daemon(object):
             if pid > 0:
                 # Exit from second parent
                 sys.exit(0)
-        except OSError as e:
+        except OSError as os_error:
             sys.stderr.write(
-                "fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
+                "fork #2 failed: %d (%s)\n" % (
+                    os_error.errno, os_error.strerror))
             sys.exit(1)
 
         if sys.platform != 'darwin':  # This block breaks on OS X
             # Redirect standard file descriptors
             sys.stdout.flush()
             sys.stderr.flush()
-            si = open(self.stdin, 'r')
-            so = open(self.stdout, 'a+')
+            std_in = open(self.stdin, 'r')
+            std_out = open(self.stdout, 'a+')
             if self.stderr:
                 try:
-                    se = open(self.stderr, 'a+', 0)
+                    std_err = open(self.stderr, 'a+', 0)
                 except ValueError:
                     # Python 3 can't have unbuffered text I/O
-                    se = open(self.stderr, 'a+', 1)
+                    std_err = open(self.stderr, 'a+', 1)
             else:
-                se = so
-            os.dup2(si.fileno(), sys.stdin.fileno())
-            os.dup2(so.fileno(), sys.stdout.fileno())
-            os.dup2(se.fileno(), sys.stderr.fileno())
+                std_err = std_out
+            os.dup2(std_in.fileno(), sys.stdin.fileno())
+            os.dup2(std_out.fileno(), sys.stdout.fileno())
+            os.dup2(std_err.fileno(), sys.stderr.fileno())
 
-        def sigtermhandler(signum, frame):
+        def sigterm_handler(signum, frame):
+            logger.debug(
+                "System reboot - daemon was stopped:\n sig: {} \n frame: {}",
+                signum,
+                frame)
             self.daemon_alive = False
             sys.exit()
 
-        if self.use_gevent:
-            import gevent
-            gevent.reinit()
-            gevent.signal(signal.SIGTERM, sigtermhandler, signal.SIGTERM, None)
-            gevent.signal(signal.SIGINT, sigtermhandler, signal.SIGINT, None)
-        else:
-            signal.signal(signal.SIGTERM, sigtermhandler)
-            signal.signal(signal.SIGINT, sigtermhandler)
+        signal.signal(signal.SIGTERM, sigterm_handler)
+        signal.signal(signal.SIGINT, sigterm_handler)
+        signal.signal(signal.SIGHUP, sigterm_handler)
 
         self.log("Started")
 
@@ -130,13 +148,17 @@ class Daemon(object):
         open(self.pidfile, 'w+').write("%s\n" % pid)
 
     def delpid(self):
+        """
+        Delete daemon PID file
+        :return: None
+        """
         try:
             # the process may fork itself again
             pid = int(open(self.pidfile, 'r').read().strip())
             if pid == os.getpid():
                 os.remove(self.pidfile)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
+        except OSError as os_error:
+            if os_error.errno == errno.ENOENT:
                 pass
             else:
                 raise
@@ -150,9 +172,9 @@ class Daemon(object):
 
         # Check for a pidfile to see if the daemon already runs
         try:
-            pf = open(self.pidfile, 'r')
-            pid = int(pf.read().strip())
-            pf.close()
+            pid_file_stream = open(self.pidfile, 'r')
+            pid = int(pid_file_stream.read().strip())
+            pid_file_stream.close()
         except IOError:
             pid = None
         except SystemExit:
@@ -216,10 +238,14 @@ class Daemon(object):
         self.start()
 
     def get_pid(self):
+        """
+        Get daemon Process ID
+        :return: pid or None
+        """
         try:
-            pf = open(self.pidfile, 'r')
-            pid = int(pf.read().strip())
-            pf.close()
+            pid_file_stream = open(self.pidfile, 'r')
+            pid = int(pid_file_stream.read().strip())
+            pid_file_stream.close()
         except IOError:
             pid = None
         except SystemExit:
@@ -227,17 +253,20 @@ class Daemon(object):
         return pid
 
     def is_running(self):
+        """
+        Get info about daemon process status
+        """
         pid = self.get_pid()
 
         if pid is None:
             self.log('Process is stopped')
             return False
-        elif os.path.exists('/proc/%d' % pid):
+        if os.path.exists('/proc/%d' % pid):
             self.log('Process (pid %d) is running...' % pid)
             return True
-        else:
-            self.log('Process (pid %d) is killed' % pid)
-            return False
+
+        self.log('Process (pid %d) is killed' % pid)
+        return False
 
     def run(self):
         """

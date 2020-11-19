@@ -8,7 +8,6 @@ import sys
 from loguru import logger
 from daemon import Daemon
 import server
-import signal
 
 logger.add("./log/daemon/debug.log", format="{time} {level} {message}",
            level="DEBUG",
@@ -28,9 +27,6 @@ STD_ERR = './log/error.log'
 HOME_DIR = '.'
 
 
-# STOPPED = False
-
-
 class App(Daemon):
     """
     Class App extends Daemon for HTTP-server
@@ -43,21 +39,6 @@ class App(Daemon):
         server.run_server(SERVER_ADDR, SERVER_PORT, LISTEN_CLIENTS_NUMB,
                           MAX_SERVER_BUFFER_SIZE)
 
-
-def stop_sigterm(sig, frame):
-    logger.info("System reboot - daemon was stopped:\n sig: {} \n frame: {}",
-                sig,
-                frame)
-
-
-def stop_sighup(sig, frame):
-    logger.info("System reboot - daemon was stopped:\n sig: {} \n frame: {}",
-                sig,
-                frame)
-
-
-signal.signal(signal.SIGTERM, stop_sigterm)
-signal.signal(signal.SIGHUP, stop_sighup)
 
 if __name__ == '__main__':
     daemon_main = App(PID_FILE, STD_IN, STD_OUT, STD_ERR, HOME_DIR)
