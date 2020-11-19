@@ -8,3 +8,5 @@ disable=
     R1702, # Too many nested blocks (> 5) (too-many-nested-blocks)
     R0912, # Too many branches (> 12) (too-many-branches)
     R0915, # Too many statements (> 50) (too-many-statements)
+    R0902, # Too many instance attributes (> 7) (too-many-instance-attributes)
+    R0913, # Too many arguments (> 5) (too-many-arguments)
