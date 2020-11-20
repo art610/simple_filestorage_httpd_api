@@ -108,12 +108,18 @@ def create_parser():
                                         help="""Stop server daemon""",
                                         description="""Stop server daemon""")
 
+    stop_parser.add_argument('--help', '-h', action="help",
+                             help='Вывести справку')
+
     # Создаем подпарсер для команды restart
     restart_parser = subparsers.add_parser('restart',
                                            add_help=False,
                                            help="""Reload server daemon""",
                                            description="""Reload server 
                                            daemon""")
+
+    restart_parser.add_argument('--help', '-h', action="help",
+                                help='Вывести справку')
 
     # Создаем подпарсер для команды get_pid
     get_pid_parser = subparsers.add_parser('get_pid',
@@ -122,6 +128,9 @@ def create_parser():
                                            process ID""",
                                            description="""Get server daemon 
                                            process ID""")
+
+    get_pid_parser.add_argument('--help', '-h', action="help",
+                                help='Вывести справку')
 
     return parser
 
@@ -165,16 +174,3 @@ if __name__ == '__main__':
 
     else:
         parser.print_help()
-
-    # if CONTROL == 'start':
-    #     daemon_main.start()
-    # elif CONTROL == 'stop':
-    #     daemon_main.stop()
-    # elif CONTROL == 'restart':
-    #     daemon_main.restart()
-    # elif CONTROL == 'run':
-    #     daemon_main.run()
-    # elif CONTROL == 'get_pid':
-    #     logger.info("Daemon PID: {}", daemon_main.get_pid())
-    # else:
-    #     daemon_main.is_running()
