@@ -2,6 +2,9 @@
 
 ![Build and publish](https://github.com/artif467/simple_filestorage_httpd_api/workflows/Build%20and%20publish/badge.svg)
 
+Соответствующий образ доступен на [Docker Hub](https://hub.docker.com/repository/docker/art610/simple_filestorage_http_server_api/general)
+
+
 ![Analysing the code and run tests](https://github.com/artif467/simple_filestorage_httpapi/workflows/Analysing%20the%20code%20and%20run%20tests/badge.svg?branch=master)
 
 Реализация демона (daemon), который предоставляет HTTP API для загрузки (upload), скачивания (download) и удаления (delete) файлов.
