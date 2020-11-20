@@ -1,3 +1,5 @@
+#!/usr/bin/python3.8
+# -*- coding: UTF-8 -*-
 """
 Simple client for test connection
 """
@@ -117,7 +119,7 @@ def delete_file(host_addr, params):
 
 if __name__ == '__main__':
     server_addr: str = 'localhost'
-    server_port: int = 9000
+    server_port: int = 12000
     SERVER_HTTP_ADDR = 'http://' + server_addr + ':' + str(server_port)
     chunk: int = 1024
     CURRENT_DIR = str(Path().parent.absolute()) + '/'
