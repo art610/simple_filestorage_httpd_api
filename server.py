@@ -1,7 +1,7 @@
 #!/usr/bin/python3.8
 # -*- coding: UTF-8 -*-
 """
-Модуль http-сервера с основной реализацией API
+Модуль с основной реализацие http-сервера
 """
 import os
 import sys
@@ -13,17 +13,15 @@ import post_handler as post
 import get_handler as get
 import delete_handler
 
-logger.add("./log/debug.log", format="{time} {level} {message}", level="DEBUG",
-           rotation="10KB")
-logger = logger.opt(colors=True)
-
 METHODS: Tuple[str, ...] = ('GET', 'POST', 'DELETE')
 HTTP_VERSIONS: Tuple[str, ...] = ('HTTP/1.1',)
 STORAGE_DIR = str(Path().parent.absolute()) + '/store/'
 
 
 @logger.catch
-def run_server(hostname_ipv4, host_port, waiting_clients, max_buffer_size):
+def run_server(hostname_ipv4: str = '0.0.0.0', host_port: int = 9000,
+               waiting_clients: int = 5,
+               max_buffer_size: int = 4096) -> socket.socket:
     """
     Функция для запуска сервера, которая возвращает серверный сокет
     """
@@ -34,7 +32,7 @@ def run_server(hostname_ipv4, host_port, waiting_clients, max_buffer_size):
 
 
 @logger.catch
-def get_server_socket(host_addr: str = 'localhost', port: int = 9000,
+def get_server_socket(host_addr: str = '0.0.0.0', port: int = 9000,
                       clients_queue_size: int = 5) -> socket.socket:
     """
     Создаем объект socket c IPv4 и TCP с указанными в аргументах адресом и
@@ -56,7 +54,8 @@ def get_server_socket(host_addr: str = 'localhost', port: int = 9000,
 
 
 @logger.catch
-def accept_connections(server_socket: socket.socket, methods, http_versions,
+def accept_connections(server_socket: socket.socket, methods: Tuple = METHODS,
+                       http_versions: Tuple = HTTP_VERSIONS,
                        buffer_size: int = 4096):
     """
     Принимаем запросы от клиентов в бесконечном цикле
@@ -89,7 +88,6 @@ def accept_connections(server_socket: socket.socket, methods, http_versions,
                 url_string = first_req_line[1]
 
                 if method == 'GET':
-                    # TODO: Implement - file downloading, issue #5
                     logger.debug('GET method')
 
                     file_hash, file_abs_path = find_file_hash_in_req(
@@ -135,7 +133,6 @@ Internal Server Error\n\n".encode())
                             "HTTP/1.1 500 Internal Server Error\n\n".encode())
 
                 else:  # method == DELETE
-                    # TODO: Implement - file deletion, issue #6
                     logger.debug('DELETE method')
 
                     file_hash, abs_path = find_file_hash_in_req(
@@ -266,20 +263,29 @@ def get_request_elements(request: bytes) -> Union[Tuple[List, Dict, bytes]]:
 
 
 if __name__ == '__main__':
-    server_addr: str = 'localhost'
-    server_port: int = 9000
-    buffer: int = 4096
-    client_queue: int = 5
-    try:
-        server_addr = sys.argv[1]
-        server_port = int(sys.argv[2])
-        buffer = int(sys.argv[3])
-        client_queue = int(sys.argv[4])
-    except IndexError:
-        logger.info('<red>Host: {}</>', server_addr)
-        logger.info('<red>Port: {}</>', server_port)
-        logger.info('Buffer: {}', buffer)
-        logger.info('Listen: {}', client_queue)
 
-    server_sock = get_server_socket(server_addr, server_port, client_queue)
-    accept_connections(server_sock, METHODS, HTTP_VERSIONS, buffer)
+    LOG_LEVEL = "DEBUG"  # argv3 -> prod / dev
+
+    SERVER_ADDR: str = 'localhost'  # argv1
+    SERVER_PORT: int = 9000  # argv2
+    MAX_SERVER_BUFFER_SIZE: int = 4096
+    LISTEN_CLIENTS_NUMB: int = 5
+
+    try:
+        SERVER_ADDR = sys.argv[1]
+        SERVER_PORT = int(sys.argv[2])
+        MAX_SERVER_BUFFER_SIZE = int(sys.argv[3])
+        LISTEN_CLIENTS_NUMB = int(sys.argv[4])
+    except IndexError:
+        logger.info('<red>Host: {}</>', SERVER_ADDR)
+        logger.info('<red>Port: {}</>', SERVER_PORT)
+        logger.info('Buffer: {}', MAX_SERVER_BUFFER_SIZE)
+        logger.info('Listen: {}', LISTEN_CLIENTS_NUMB)
+
+    logger.add("./log/debug.log", format="{time} {level} {message}",
+               level="DEBUG",
+               rotation="10KB")
+    logger = logger.opt(colors=True)
+
+    run_server(SERVER_ADDR, SERVER_PORT, LISTEN_CLIENTS_NUMB,
+               MAX_SERVER_BUFFER_SIZE)

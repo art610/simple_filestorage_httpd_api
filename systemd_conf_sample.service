@@ -1,0 +1,19 @@
+[Unit]
+Description=Simple File Upload HTTP Server
+After=network.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+PIDFile=<PROJECT_DIR>/daemon_pid.pid
+ExecStart=/usr/bin/python3.8 <PROJECT_DIR>/main.py start --host <hostname> --port <port_number> --log <log_level> --listen <listen_clients_numb>  --buffer <server_buffer_size>
+ExecStop=/usr/bin/python3.8 <PROJECT_DIR>/main.py stop
+ExecReload=/usr/bin/python3.8 <PROJECT_DIR>/main.py restart
+WorkingDirectory=<PROJECT_DIR>
+StandardInput=tty-force
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
