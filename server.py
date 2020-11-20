@@ -1,7 +1,7 @@
 #!/usr/bin/python3.8
 # -*- coding: UTF-8 -*-
 """
-Модуль http-сервера с основной реализацией API
+Модуль с основной реализацие http-сервера
 """
 import os
 import sys
@@ -88,7 +88,6 @@ def accept_connections(server_socket: socket.socket, methods: Tuple = METHODS,
                 url_string = first_req_line[1]
 
                 if method == 'GET':
-                    # TODO: Implement - file downloading, issue #5
                     logger.debug('GET method')
 
                     file_hash, file_abs_path = find_file_hash_in_req(
@@ -134,7 +133,6 @@ Internal Server Error\n\n".encode())
                             "HTTP/1.1 500 Internal Server Error\n\n".encode())
 
                 else:  # method == DELETE
-                    # TODO: Implement - file deletion, issue #6
                     logger.debug('DELETE method')
 
                     file_hash, abs_path = find_file_hash_in_req(
